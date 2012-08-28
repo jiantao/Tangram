@@ -1,0 +1,46 @@
+$(shell mkdir -p ../bin)
+$(shell mkdir -p ../obj)
+$(shell mkdir -p ./lib)
+$(shell mkdir -p ./include)
+
+export SRC_DIR:=$(shell pwd)
+export OBJ_DIR:=$(dir $(SRC_DIR))obj
+export BIN_DIR:=$(dir $(SRC_DIR))bin
+export LIB_DIR:=$(SRC_DIR)/lib
+export INCLUDE_DIR:=$(SRC_DIR)/include
+
+export CC := gcc
+export CXX := g++
+export CFLAGS := --std=gnu99 -Wall -O3
+export CXXFLAGS := -Wall -O3
+export PTHREAD := -pthread
+export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
+
+SUBDIRS := OutSources TangramScan TangramMerge TangramDetect TangramIndex 
+
+test:
+	@echo $(OBJ_DIR)
+
+all:
+	@echo "Building Tangram"
+	@echo "========================================================="
+	@for dir in $(SUBDIRS); do \
+		echo "- Building in $$dir"; \
+		$(MAKE) --no-print-directory -C $$dir; \
+		echo ""; \
+	done
+
+clean:
+	@rm -rf $(BIN_DIR) $(OBJ_DIR)
+	@$(MAKE) clean --no-print-directory -C TangramScan
+	@$(MAKE) clean --no-print-directory -C TangramMerge
+
+clean_all:
+	@rm -rf $(BIN_DIR) $(OBJ_DIR)
+	@rm -rf $(LIB_DIR)
+	@rm -rf $(INCLUDE_DIR)
+	@$(MAKE) clean --no-print-directory -C TangramScan
+	@$(MAKE) clean --no-print-directory -C TangramMerge
+	@$(MAKE) clean --no-print-directory -C OutSources
+
+.PHONY: all clean clean_all
