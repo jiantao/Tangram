@@ -80,6 +80,10 @@ namespace Tangram
 
             void PrintSpecial(void);
 
+            void PrintSpecialHeader(void);
+
+            void PrintSpecialBody(void);
+
             inline void InitFeatures(void)
             {
                 features.anchorName = NULL;
@@ -115,7 +119,7 @@ namespace Tangram
 
             void SetSampleInfoSplit(const SplitEvent& splitEvent);
 
-            void SetSampleString(void);
+            // void SetSampleString(void);
 
             void SetSpecialFeatures(unsigned int zaSpRefID);
 
@@ -123,13 +127,17 @@ namespace Tangram
 
             void SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial, unsigned int zaSpRefID);
 
+            bool SpecialPrintFilter(void);
+
         private:
 
             PrintIdx printIdx;
 
             PrintFeatures features;
 
-            std::map<unsigned int, unsigned int> sampleMap;
+            // std::map<unsigned int, unsigned int> sampleMap;
+            
+            Array<unsigned int> sampleMap;
             
             std::ostringstream formatted;
 

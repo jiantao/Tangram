@@ -34,6 +34,7 @@ namespace Tangram
             ~Array();
 
             inline void Init(unsigned int capacity);
+            inline void MemSet(int value);
             inline void InitToEnd(void);
 
             void ResizeNoCopy(unsigned int newCap);
@@ -111,6 +112,11 @@ namespace Tangram
     template <class T> inline void Array<T>::InitToEnd(void)
     {
         memset(data + size, 0, sizeof(T) * (capacity - size));
+    }
+
+    template <class T> inline void Array<T>::MemSet(int value)
+    {
+        memset(data, value, sizeof(T) * (capacity));
     }
 
     template <class T> void Array<T>::ResizeNoCopy(unsigned int newCap)

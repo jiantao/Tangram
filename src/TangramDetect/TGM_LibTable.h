@@ -69,6 +69,11 @@ namespace Tangram
 
             bool GetSpecialRefID(uint32_t& specialRefID, const char* specialRefName) const;
 
+            inline unsigned int GetNumSamples(void) const
+            {
+                return sampleNames.Size();
+            }
+
             inline const Array<char*>& GetAnchorNames(void) const
             {
                 return anchorNames;

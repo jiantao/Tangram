@@ -16,6 +16,7 @@
  * =====================================================================================
  */
 
+#include <time.h>
 #include "TGM_Printer.h"
 
 using namespace Tangram;
@@ -50,6 +51,11 @@ void Printer::Print(void)
 void Printer::PrintSpecial(void)
 {
     unsigned int numSp = libTable.GetNumSpecialRef();
+    unsigned int numSamples = libTable.GetNumSamples();
+
+    PrintSpecialHeader();
+    sampleMap.Init(numSamples);
+    sampleMap.SetSize(numSamples);
 
     for (unsigned int i = 0; i != numSp; ++i)
     {
@@ -69,7 +75,7 @@ void Printer::PrintSpecial(void)
 
         while (GetNextSpecial(pRpSpecials, pSplitSpecials))
         {
-            sampleMap.clear();
+            sampleMap.MemSet(0);
             InitFeatures();
 
             if (printIdx.pRpSpecial != NULL)
@@ -78,12 +84,15 @@ void Printer::PrintSpecial(void)
             if (printIdx.pSplitEvent != NULL)
                 SetSampleInfoSplit(*(printIdx.pSplitEvent));
 
-            SetSampleString();
+            // SetSampleString();
             SetSpecialFeatures(i);
+            PrintSpecialBody();
 
+            /*  
             printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
                     features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
                     features.pos3[0], features.pos3[1], formatted.str().c_str());
+            */
         }
     }
 
@@ -101,21 +110,148 @@ void Printer::PrintSpecial(void)
 
                 for (unsigned int j = 0; j != len; ++j)
                 {
-                    sampleMap.clear();
+                    sampleMap.MemSet(0);
                     InitFeatures();
 
                     SetSampleInfoSplit(pSplitSpecials[j]);
 
-                    SetSampleString();
+                    // SetSampleString();
                     SetSpecialFeaturesFromSplit(pSplitSpecials[j]);
 
+                    PrintSpecialBody();
+
+                    /*
                     printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
                             features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
                             features.pos3[0], features.pos3[1], formatted.str().c_str());
+                    */
                 }
             }
         }
     }
+}
+
+void Printer::PrintSpecialHeader(void)
+{
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y%m%d", &tstruct);
+
+    printf("##fileformat=VCFv4.1\n"
+           "##fileDate=%s\n"
+           "##source=Tangram\n"
+           "##ALT=<ID=INS:ME:AL,Description=\"Insertion of ALU element\">\n"
+           "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
+           "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
+           "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERV element\">\n"
+           "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
+           "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
+           "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
+           "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
+           "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
+           "5' split fragments and 3' split fragments \">\n"
+           "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
+           "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
+           buf);
+
+    printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+
+    const Array<char*>& sampleNames = libTable.GetSampleNames();
+
+    unsigned int numSamples = sampleNames.Size();
+    for (unsigned int i = 0; i != numSamples; ++i)
+    {
+        printf("\t%s", sampleNames[i]);
+    }
+
+    printf("\n");
+}
+
+void Printer::PrintSpecialBody(void)
+{
+    int insertedLen = -1;
+    if (printIdx.pSplitEvent != NULL)
+    {
+        if (printIdx.pSplitEvent->pSpecialData->end >= 0 && printIdx.pSplitEvent->pSpecialData->pos >=0)
+            insertedLen = printIdx.pSplitEvent->pSpecialData->end - printIdx.pSplitEvent->pSpecialData->pos + 1;
+    }
+
+    int splitFrag = features.splitFrag[0] + features.splitFrag[1];
+    char refChar = char_table[pRef->refSeq[features.pos - pRef->pos]];
+
+    formatted.clear();
+    formatted.str("");
+
+    if (splitFrag == 0)
+    {
+        int ciPos1 = 0;
+        int ciPos2 = 0;
+        if (features.pos5[1] < features.pos3[0])
+        {
+            ciPos1 = features.pos5[0] - features.pos5[1];
+            ciPos2 = features.pos3[1] - features.pos5[1];
+        }
+        else
+        {
+            ciPos1 = features.pos5[0] - features.pos3[0];
+            ciPos2 = features.pos3[1] - features.pos3[0];
+        }
+
+        formatted << "CIPOS=" << ciPos1 << "," << ciPos2 << ";";
+    }
+
+    printf("chr%s\t"
+           "%d\t"
+           ".\t"
+           "%c\t"
+           "<INS:ME:%s>\t"
+           ".\t"
+           ".\t"
+           "%s%s",
+           features.anchorName,
+           features.pos,
+           refChar,
+           features.spRefName,
+           splitFrag > 0 ? "" : "IMPRECISE;",
+           formatted.str().c_str()
+          );
+
+    formatted.clear();
+    formatted.str("");
+
+    formatted << "FRAG=" << features.rpFrag[0] << "," << features.rpFrag[1] << "," << features.splitFrag[0] << "," << features.splitFrag[1] << ";";
+
+    printf("%sSTRAND=%c;MEILEN=%d\t"
+           "GT:AD",
+           formatted.str().c_str(),
+           features.strand,
+           insertedLen
+          );
+
+    unsigned int numSamples = libTable.GetNumSamples();
+    char buff[4];
+    buff[1] = '/';
+    buff[3] = '\0';
+
+    for (unsigned int i = 0; i != numSamples; ++i)
+    {
+        if (sampleMap[i] > 0)
+        {
+            buff[0] = '1';
+            buff[2] = '.';
+        }
+        else
+        {
+            buff[0] = '0';
+            buff[2] = '0';
+        }
+
+        printf("\t%s:%d", buff, sampleMap[i]);
+    }
+
+    printf("\n");
 }
 
 bool Printer::GetNextSpecial(const SpecialEvent* pRpSpecials, const SplitEvent* pSplitSpecials)
@@ -238,6 +374,7 @@ void Printer::SetSampleInfoSplit(const SplitEvent& splitEvent)
     }
 }
 
+/*
 void Printer::SetSampleString(void)
 {
     const Array<char*>& sampleNames = libTable.GetSampleNames();
@@ -252,6 +389,7 @@ void Printer::SetSampleString(void)
         formatted << name << "_" << itor->second << "_";
     }
 }
+*/
 
 void Printer::SetSpecialFeatures(unsigned int zaSpRefID)
 {
