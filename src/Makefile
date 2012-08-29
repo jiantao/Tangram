@@ -18,9 +18,6 @@ export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
 
 SUBDIRS := OutSources TangramScan TangramMerge TangramDetect TangramIndex 
 
-test:
-	@echo $(OBJ_DIR)
-
 all:
 	@echo "Building Tangram"
 	@echo "========================================================="

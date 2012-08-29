@@ -4,13 +4,20 @@ SAM_LIB:=$(LIB_DIR)/libbam.a
 libs: $(BAM_LIB) $(SAM_LIB)
 
 $(BAM_LIB): 
+	@echo "  * generating libbamtools.a"
 	@cd bamtools/ && mkdir -p build && cd build && cmake .. && $(MAKE)
+	@echo "  * copying libbamtools.a to the library directory"
 	@cp bamtools/lib/libbamtools.a $(LIB_DIR)
+	@echo "  * copying include files to the library directory"
 	@cp -r bamtools/include/* $(INCLUDE_DIR)
+	@echo " "
 
 $(SAM_LIB):
+	@echo "  * generating libbam.a"
 	@$(MAKE) lib --no-print-directory -C samtools
+	@echo "  * copying libbam.a to the library directory"
 	@cp samtools/libbam.a $(LIB_DIR)
+	@echo "  * copying include files to the library directory"
 	@cp samtools/bgzf.h samtools/bam.h samtools/khash.h samtools/kseq.h $(INCLUDE_DIR)
 
 clean:
