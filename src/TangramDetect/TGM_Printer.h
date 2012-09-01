@@ -71,7 +71,9 @@ namespace Tangram
     class Printer
     {
         public:
-            Printer(const Detector* pDetector, const Aligner* pAligner, const Reference* pRef, const LibTable& libTable, const BamPairTable& bamPairTable);
+            Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, 
+                    const LibTable& libTable, const BamPairTable& bamPairTable);
+
             ~Printer();
 
             void Print();
@@ -80,9 +82,9 @@ namespace Tangram
 
             void PrintSpecial(void);
 
-            void PrintSpecialHeader(void);
+            void PrintSpecialHeader(FILE* fpOutput);
 
-            void PrintSpecialBody(void);
+            void PrintSpecialBody(FILE* fpOutput);
 
             inline void InitFeatures(void)
             {
@@ -142,6 +144,8 @@ namespace Tangram
             std::ostringstream formatted;
 
             const Detector* pDetector;
+
+            const DetectPars& detectPars;
 
             const Aligner* pAligner;
 

@@ -17,13 +17,15 @@
  */
 
 #include <time.h>
+#include <string>
 #include "TGM_Printer.h"
 
+using namespace std;
 using namespace Tangram;
 
 
-Printer::Printer(const Detector* pDetector, const Aligner* pAligner, const Reference* pRef, const LibTable& libTable, const BamPairTable& bamPairTable)
-                : pDetector(pDetector), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable)
+Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, const LibTable& libTable, const BamPairTable& bamPairTable)
+                : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable)
 {
     InitFeatures();
 }
@@ -50,10 +52,20 @@ void Printer::Print(void)
 
 void Printer::PrintSpecial(void)
 {
+    FILE* fpOutput = NULL;
+    if (detectPars.outputPrefix != NULL)
+    {
+        string outputFile(detectPars.outputPrefix);
+        outputFile += ".mei.vcf";
+        fpOutput = fopen(outputFile.c_str(), "w");
+        if (fpOutput == NULL)
+            TGM_ErrQuit("Error: Cannot open the MEI VCF file: %s\n", outputFile.c_str());
+    }
+
     unsigned int numSp = libTable.GetNumSpecialRef();
     unsigned int numSamples = libTable.GetNumSamples();
 
-    PrintSpecialHeader();
+    PrintSpecialHeader(fpOutput);
     sampleMap.Init(numSamples);
     sampleMap.SetSize(numSamples);
 
@@ -86,7 +98,7 @@ void Printer::PrintSpecial(void)
 
             // SetSampleString();
             SetSpecialFeatures(i);
-            PrintSpecialBody();
+            PrintSpecialBody(fpOutput);
 
             /*  
             printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
@@ -118,7 +130,7 @@ void Printer::PrintSpecial(void)
                     // SetSampleString();
                     SetSpecialFeaturesFromSplit(pSplitSpecials[j]);
 
-                    PrintSpecialBody();
+                    PrintSpecialBody(fpOutput);
 
                     /*
                     printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
@@ -131,7 +143,7 @@ void Printer::PrintSpecial(void)
     }
 }
 
-void Printer::PrintSpecialHeader(void)
+void Printer::PrintSpecialHeader(FILE* fpOutput)
 {
     time_t     now = time(0);
     struct tm  tstruct;
@@ -139,37 +151,69 @@ void Printer::PrintSpecialHeader(void)
     tstruct = *localtime(&now);
     strftime(buf, sizeof(buf), "%Y%m%d", &tstruct);
 
-    printf("##fileformat=VCFv4.1\n"
-           "##fileDate=%s\n"
-           "##source=Tangram\n"
-           "##ALT=<ID=INS:ME:AL,Description=\"Insertion of ALU element\">\n"
-           "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
-           "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
-           "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERV element\">\n"
-           "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
-           "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
-           "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
-           "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
-           "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
-           "5' split fragments and 3' split fragments\">\n"
-           "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
-           "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
-           buf);
+    if (fpOutput == NULL)
+    {
+        printf("##fileformat=VCFv4.1\n"
+               "##fileDate=%s\n"
+               "##source=Tangram\n"
+               "##ALT=<ID=INS:ME:AL,Description=\"Insertion of ALU element\">\n"
+               "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
+               "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
+               "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERV element\">\n"
+               "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
+               "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
+               "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
+               "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
+               "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
+               "5' split fragments and 3' split fragments\">\n"
+               "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
+               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
+               buf);
 
-    printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+        printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+    }
+    else
+    {
+        fprintf(fpOutput, 
+               "##fileformat=VCFv4.1\n"
+               "##fileDate=%s\n"
+               "##source=Tangram\n"
+               "##ALT=<ID=INS:ME:AL,Description=\"Insertion of ALU element\">\n"
+               "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
+               "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
+               "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERV element\">\n"
+               "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
+               "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
+               "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
+               "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
+               "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
+               "5' split fragments and 3' split fragments\">\n"
+               "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
+               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
+               buf);
+
+        fprintf(fpOutput, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+    }
 
     const Array<char*>& sampleNames = libTable.GetSampleNames();
 
     unsigned int numSamples = sampleNames.Size();
     for (unsigned int i = 0; i != numSamples; ++i)
     {
-        printf("\t%s", sampleNames[i]);
+        if (fpOutput == NULL)
+            printf("\t%s", sampleNames[i]);
+        else
+            fprintf(fpOutput, "\t%s", sampleNames[i]);
+
     }
 
-    printf("\n");
+    if (fpOutput == NULL)
+        printf("\n");
+    else
+        fprintf(fpOutput, "\n");
 }
 
-void Printer::PrintSpecialBody(void)
+void Printer::PrintSpecialBody(FILE* fpOutput)
 {
     int insertedLen = -1;
     if (printIdx.pSplitEvent != NULL)
@@ -202,33 +246,66 @@ void Printer::PrintSpecialBody(void)
         formatted << "CIPOS=" << ciPos1 << "," << ciPos2 << ";";
     }
 
-    printf("chr%s\t"
-           "%d\t"
-           ".\t"
-           "%c\t"
-           "<INS:ME:%s>\t"
-           ".\t"
-           ".\t"
-           "%s%s",
-           features.anchorName,
-           features.pos,
-           refChar,
-           features.spRefName,
-           splitFrag > 0 ? "" : "IMPRECISE;",
-           formatted.str().c_str()
-          );
+    if (fpOutput == NULL)
+    {
+        printf("chr%s\t"
+               "%d\t"
+               ".\t"
+               "%c\t"
+               "<INS:ME:%s>\t"
+               ".\t"
+               ".\t"
+               "%s%s",
+               features.anchorName,
+               features.pos,
+               refChar,
+               features.spRefName,
+               splitFrag > 0 ? "" : "IMPRECISE;",
+               formatted.str().c_str()
+              );
+    }
+    else
+    {
+        fprintf(fpOutput, "chr%s\t"
+               "%d\t"
+               ".\t"
+               "%c\t"
+               "<INS:ME:%s>\t"
+               ".\t"
+               ".\t"
+               "%s%s",
+               features.anchorName,
+               features.pos,
+               refChar,
+               features.spRefName,
+               splitFrag > 0 ? "" : "IMPRECISE;",
+               formatted.str().c_str()
+              );
+    }
 
     formatted.clear();
     formatted.str("");
 
     formatted << "FRAG=" << features.rpFrag[0] << "," << features.rpFrag[1] << "," << features.splitFrag[0] << "," << features.splitFrag[1] << ";";
 
-    printf("%sSTRAND=%c;MEILEN=%d\t"
-           "GT:AD",
-           formatted.str().c_str(),
-           features.strand,
-           insertedLen
-          );
+    if (fpOutput == NULL)
+    {
+        printf("%sSTRAND=%c;MEILEN=%d\t"
+               "GT:AD",
+               formatted.str().c_str(),
+               features.strand,
+               insertedLen
+              );
+    }
+    else
+    {
+        fprintf(fpOutput, "%sSTRAND=%c;MEILEN=%d\t"
+               "GT:AD",
+               formatted.str().c_str(),
+               features.strand,
+               insertedLen
+              );
+    }
 
     unsigned int numSamples = libTable.GetNumSamples();
     char buff[4];
@@ -248,10 +325,16 @@ void Printer::PrintSpecialBody(void)
             buff[2] = '0';
         }
 
-        printf("\t%s:%d", buff, sampleMap[i]);
+        if (fpOutput == NULL)
+            printf("\t%s:%d", buff, sampleMap[i]);
+        else
+            fprintf(fpOutput, "\t%s:%d", buff, sampleMap[i]);
     }
 
-    printf("\n");
+    if (fpOutput == NULL)
+        printf("\n");
+    else
+        fprintf(fpOutput, "\n");
 }
 
 bool Printer::GetNextSpecial(const SpecialEvent* pRpSpecials, const SplitEvent* pSplitSpecials)

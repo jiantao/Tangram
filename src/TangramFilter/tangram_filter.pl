@@ -90,7 +90,14 @@ push(@tmpFiles, $tmpVcfFile);
 
 # open the vcf file and parse each line of it to remove those low coverage event
 my $vcfHeader = "";
-open(IN, "<", $vcfFile) or die("ERROR: Cannot open the input VCF file: $vcfFile.\n");
+if ($vcfFile ne "stdin")
+{
+    open(IN, "<", $vcfFile) or die("ERROR: Cannot open the input VCF file: $vcfFile.\n");
+}
+else
+{
+    open(IN, "<-");
+}
 
 while (my $line = <IN>)
 {
@@ -125,6 +132,7 @@ while (my $line = <IN>)
 {
     chomp $line;
     next if length($line) == 0;
+    next if $line =~ /^#/;
 
     my @data = split("\t", $line);
 

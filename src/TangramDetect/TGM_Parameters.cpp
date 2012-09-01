@@ -27,7 +27,7 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       14
+#define OPT_TOTAL_ARGS       15
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_REQUIRED_ARGS    3
@@ -62,6 +62,8 @@ using namespace BamTools;
 #define OPT_MIN_SCORE_RATE       12
 
 #define OPT_THREAD_NUM           13
+
+#define OPT_OUTPUT               14
 
 
 #define DEFAULT_MIN_CLUSTER_SIZE 2
@@ -159,6 +161,7 @@ void Parameters::Set(const char** argv, int argc)
         {"dt",  NULL, FALSE},
         {"msr",  NULL, FALSE},
         {"p",  NULL, FALSE},
+        {"out",  NULL, FALSE},
         {NULL,   NULL, FALSE}
     };
 
@@ -293,6 +296,9 @@ void Parameters::Set(const char** argv, int argc)
                     alignerPars.numThread = numThread;
                 }
 
+                break;
+            case OPT_OUTPUT:
+                detectPars.outputPrefix = opts[i].value;
                 break;
             default:
                 TGM_ErrQuit("ERROR: Unrecognized argument.\n");

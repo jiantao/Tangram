@@ -91,6 +91,8 @@ namespace Tangram
 
             FILE* fpBamListInput;
 
+            const char* outputPrefix;
+
             const char* pRangeStr;
 
             uint32_t detectSet;

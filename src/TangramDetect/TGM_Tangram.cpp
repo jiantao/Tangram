@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
         pAligner = &aligner;
     }
 
-    Printer printer(&detector, pAligner, pRef, libTable, bamPairTable);
+    Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable);
     printer.Print();
 
     bamMultiReader.Close();
