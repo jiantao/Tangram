@@ -1,3 +1,0 @@
-AL	400	/path/to/chr20_repeat_mask_alu.bed
-L1	400	/path/to/chr20_repeat_mask_alu_l1.bed
-SV	400	/path/to/chr20_repeat_mask_alu_sva.bed
