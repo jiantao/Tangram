@@ -175,7 +175,7 @@ void TGM_ReadPairScanHelp(void)
     printf("Usage: tangram_scan [options] -in <input_file_list> -dir <output_dir>\n\n");
 
     printf("Mandatory arguments: -in   FILE   the list of input bam files\n");
-    printf("                     -dir  STRING the path to the output dir (must be empty)\n\n");
+    printf("                     -dir  STRING the path to the output dir (must be empty or non-existing)\n\n");
 
     printf("Options:             -cf   FLOAT  threashold for normal read pair in the fragment length distribution[0.01 total for both side]\n");
     printf("                     -tr   FLOAT  trim rate for the fragment length distribution[0.02 total for both side]\n");

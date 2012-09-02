@@ -1,0 +1,53 @@
+This directory contains an example to show how to use the tangram 
+to detect the MEI from MOSAIK aligned bam files.
+
+Files
+=======================================
+
+1. chr20_simu_5x_1m.bam: this is a MOSAIK aligned bam file with 20 
+                         simulated ALU insertions (homozygous) with 
+                         5X coverage. It is sorted by coordinates 
+                         and indexed (chr20_simu_5x_1m.bam.bai).
+
+2. chr20_repeat_mask*.bed: These files contain the coordinates of
+                           referenced mobile elements on chr20.
+                           They will be used as filters.
+
+3. key_1m.txt: This files contains the coordinates of the simulated
+               insertions.
+
+4. bam_list_example.txt: This is an example file of an input bam list
+                         for Tangram (tangram_detect and tangram_scan). 
+                         Each entry of the file should be a path
+                         to a bam file. You should change the path
+                         in the example list to the real path.
+
+5. mask_list_example.txt: This is an example file of input mask list for
+                          tangram_filter.pl (--msk). Each entry of the 
+                          file contain the type of mask, window size and
+                          the path to the mask. You should change the path
+                          in the example to the real path.
+
+
+Detection Pipeline
+=======================================
+
+Note: all the command is run in $TANGRAM_HOME/bin.
+
+1. You need to download the human reference file for the 1000G ftp site:
+   ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
+   and unzip the file to the "$TANGRAM_HOME/data" directory. The special reference file is already included in 
+   the $TANGRAM_HOME/data (moblist_19Feb2010_sequence_length60.fa).
+
+2. Change the path in the bam_list_example.txt and mask_list_example.txt to the real path in your computer.
+
+3. Index the reference: ./tangram_index -ref <path_to_human_ref> -sp <path_to_special_ref> -out <indexed_ref>
+
+4. Build the fragment length distribution: ./tangram_scan -in <path_to_bam_list> -dir <output_dir>. Note that this
+                                           output directory must be empty or non-existing (tangram_scan will create
+                                           one for you). After scanning, you should find two build files in the output
+                                           directory: "lib_table.dat" and "hist.dat". These two files are the input for
+                                           tangram_detect.
+
+5. Call MEI events and filtering: ./tangram_detect -lb <path_to_lib_table.dat> -ht <path_to_hist.dat> -in <path_to_bam_list> \ 
+                                  -rg 20 -ref <path_to_indexed_ref> | ./tangram_filter.pl --vcf stdin --msk <path_to_mask_list>
