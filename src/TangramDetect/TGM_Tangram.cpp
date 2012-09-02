@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
 
     if (alignerPars.fpRefInput != NULL)
     {
-        reference.Read(alignerPars.fpRefInput, detectPars.refID, detectPars.range[0], detectPars.range[1]);
+        // always load the whole chromosome reference
+        reference.Read(alignerPars.fpRefInput, detectPars.refID, -1, -1);
         reference.CreateFamilyToZA(*(libTable.GetSpecialRefNames()));
 
         aligner.Map();

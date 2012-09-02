@@ -352,6 +352,8 @@ void Parameters::ParseRangeStr(const BamMultiReader& multiReader)
                 TGM_ErrQuit("ERROR: Invalid range %s\n", pRangeStr);
         }
     }
+
+    detectPars.range[0] -= 1;
 }
 
 void Parameters::SetRange(BamMultiReader& multiReader, const int32_t& maxFragLen) const
@@ -404,6 +406,7 @@ void Parameters::ShowHelp(void) const
     printf("                     -rg   STRING chromosome region (all the bam files must be sorted by chromosome positions and indexed)\n\n");
 
     printf("Options:             -ref  FILE   transfered reference sequence, required for split alignment[null]\n");
+    printf("                     -out  STR    prefix to the output files, including the path.[stdout]\n");
     printf("                     -cl   INT    check for invalid libraries\n");
     printf("                     -mcs  INT    minimum cluster size[2]\n");
     printf("                     -mel  INT    minimum event lenth[100]\n");
@@ -417,7 +420,7 @@ void Parameters::ShowHelp(void) const
     printf("Notes:\n\n");
 
     printf("  1. A region should be presented in one of the following formats:\n\
-    `1', `2:1,000' and `X:1000-2,000'. When a region is specified,\n\
+    `1', `2:1000' and `X:1000-2000' (1-based). When a region is specified,\n\
     the input alignment file must be an indexed BAM file.\n\n");
 
     exit(EXIT_SUCCESS);
