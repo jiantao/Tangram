@@ -37,18 +37,28 @@ Note: all the command is run in $TANGRAM_HOME/bin.
 
 1. You need to download the human reference file for the 1000G ftp site:
    ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
-   and unzip the file to the "$TANGRAM_HOME/data" directory. The special reference file is already included in 
-   the $TANGRAM_HOME/data (moblist_19Feb2010_sequence_length60.fa).
+   and unzip the file to the "$TANGRAM_HOME/data" directory. The special 
+   reference file is already included in the "$TANGRAM_HOME/data"
+   (moblist_19Feb2010_sequence_length60.fa).
 
-2. Change the path in the bam_list_example.txt and mask_list_example.txt to the real path in your computer.
+2. Change the path in the bam_list_example.txt and mask_list_example.txt 
+   to the real path in your computer.
 
-3. Index the reference: > ./tangram_index -ref <path_to_human_ref> -sp <path_to_special_ref> -out <indexed_ref>
+3. Index the reference: 
 
-4. Build the fragment length distribution: > ./tangram_scan -in <path_to_bam_list> -dir <output_dir>. Note that this
-                                           output directory must be empty or non-existing (tangram_scan will create
-                                           one for you). After scanning, you should find two build files in the output
-                                           directory: "lib_table.dat" and "hist.dat". These two files are the input for
-                                           tangram_detect.
+> ./tangram_index -ref <path_to_human_ref> -sp <path_to_special_ref> -out <indexed_ref>
 
-5. Call MEI events and filtering: > ./tangram_detect -lb <path_to_lib_table.dat> -ht <path_to_hist.dat> -in <path_to_bam_list> \ 
-                                  -rg 20 -ref <path_to_indexed_ref> | ./tangram_filter.pl --vcf stdin --msk <path_to_mask_list>
+4. Fragment length distribution: 
+
+> ./tangram_scan -in <path_to_bam_list> -dir <output_dir>
+
+Note that this output directory must be empty or non-existing 
+(tangram_scan will create one for you). After scanning, you 
+should find two build files in the output directory: "lib_table.dat" 
+and "hist.dat". These two files are the input for tangram_detect.
+
+5. Call MEI events and filtering: 
+
+> ./tangram_detect -lb <path_to_lib_table.dat> -ht <path_to_hist.dat> \
+-in <path_to_bam_list> -rg 20 -ref <path_to_indexed_ref>              \
+| ./tangram_filter.pl --vcf stdin --msk <path_to_mask_list>
