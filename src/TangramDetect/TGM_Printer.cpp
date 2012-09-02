@@ -257,7 +257,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
                ".\t"
                "%s%s",
                features.anchorName,
-               features.pos,
+               features.pos + 1,
                refChar,
                features.spRefName,
                splitFrag > 0 ? "" : "IMPRECISE;",
@@ -275,7 +275,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
                ".\t"
                "%s%s",
                features.anchorName,
-               features.pos,
+               features.pos + 1,
                refChar,
                features.spRefName,
                splitFrag > 0 ? "" : "IMPRECISE;",
