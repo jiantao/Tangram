@@ -437,7 +437,13 @@ void Detector::DoInversionMerge(Inversion& mergedInv, const Inversion* pHeadInv,
 
 void Detector::MergeInversions(void)
 {
+    unsigned int numInv5 = invEvents[0].Size();
+    unsigned int numInv3 = invEvents[1].Size();
 
+    for (unsigned int i = 0; i != numInv5; ++i)
+    {
+        Inversion& inv5 = invEvents[0][i];
+    }
 }
 
 void Detector::CallSpecial(void)
