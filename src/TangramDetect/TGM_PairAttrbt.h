@@ -5,13 +5,12 @@
  *
  *    Description:  
  *
- *        Version:  1.0
  *        Created:  05/11/2012 11:19:12 AM
  *       Revision:  none
  *       Compiler:  gcc
  *
  *         Author:  Jiantao Wu (), 
- *        Company:  
+ *   Inistitution:  Boston College
  *
  * =====================================================================================
  */
@@ -41,13 +40,15 @@ namespace Tangram
     {
         public:
 
-            PairAttrbtTable();
+            PairAttrbtTable(const LibTable& libTable, const BamPairTable& bamPairTable);
 
             ~PairAttrbtTable();
 
-            void Init(const LibTable* pLibTable);
+            void Init(void);
 
-            void MakeSpecial(const Array<SpecialPair>& specialPairs);
+            void MakeInversion(void);
+
+            void MakeSpecial(void);
 
         public:
 
@@ -63,7 +64,9 @@ namespace Tangram
 
         private:
 
-            const LibTable* pLibTable;
+            const LibTable& libTable;
+
+            const BamPairTable& bamPairTable;
     };
 };
 

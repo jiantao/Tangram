@@ -67,8 +67,8 @@ int main(int argc, char *argv[])
 
     fragLenTable.Destory();
 
-    Detector detector;
-    detector.Init(&detectPars, &libTable, &bamPairTable);
+    Detector detector(detectPars, libTable, bamPairTable);
+    detector.Init();
 
     detector.CallEvents();
 

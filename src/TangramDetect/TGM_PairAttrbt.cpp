@@ -5,13 +5,12 @@
  *
  *    Description:  
  *
- *        Version:  1.0
  *        Created:  05/11/2012 11:19:10 AM
  *       Revision:  none
  *       Compiler:  gcc
  *
  *         Author:  Jiantao Wu (), 
- *        Company:  
+ *   Inistitution:  Boston College
  *
  * =====================================================================================
  */
@@ -50,9 +49,10 @@ static int CompareAttrbt(const void* a, const void* b)
     }
 }
 
-PairAttrbtTable::PairAttrbtTable()
+PairAttrbtTable::PairAttrbtTable(const LibTable& libTable, const BamPairTable& bamPairTable)
+                                : libTable(libTable), bamPairTable(bamPairTable)
 {
-    pSpecialAttrbts = NULL;
+
 }
 
 PairAttrbtTable::~PairAttrbtTable()
@@ -60,11 +60,9 @@ PairAttrbtTable::~PairAttrbtTable()
     delete [] pSpecialAttrbts;
 }
 
-void PairAttrbtTable::Init(const LibTable* pLibTable)
+void PairAttrbtTable::Init(void)
 {
-    this->pLibTable = pLibTable;
-
-    const Array<char*>* pSpecialRefNames = pLibTable->GetSpecialRefNames();
+    const Array<char*>* pSpecialRefNames = libTable.GetSpecialRefNames();
     specialSize = pSpecialRefNames->Size() * 2;
 
     pSpecialAttrbts = new (nothrow) Array<PairAttrbt>[specialSize];
@@ -72,8 +70,68 @@ void PairAttrbtTable::Init(const LibTable* pLibTable)
         TGM_ErrQuit("ERROR: Not enough memory for the pair attribute table.\n");
 }
 
-void PairAttrbtTable::MakeSpecial(const Array<SpecialPair>& specialPairs)
+void PairAttrbtTable::MakeInversion(void)
 {
+    const Array<LocalPair>& invertedPairs = bamPairTable.invertedPairs;
+
+    unsigned int numInv = invertedPairs.Size();
+    unsigned int numInv3 = bamPairTable.numInverted3;
+    unsigned int numInv5 = numInv - numInv3;
+
+    invertedAttrbts[0].Init(numInv3);
+    invertedAttrbts[0].SetSize(numInv3);
+
+    invertedAttrbts[1].Init(numInv5);
+    invertedAttrbts[1].SetSize(numInv5);
+
+    unsigned int idx3 = 0;
+    unsigned int idx5 = 0;
+    for (unsigned int i = 0; i != numInv; ++i)
+    {
+        const LocalPair* pInvPair = invertedPairs.GetPointer(i);
+        unsigned int* pIdx = NULL;
+        PairAttrbt* pAttrbt = NULL;
+
+        double fragLen = 0.0;
+        double first = 0.0;
+
+        if (pInvPair->readPairType == PT_INVERTED3)
+        {
+            pIdx = &idx3;
+            pAttrbt = invertedAttrbts[0].GetPointer(*pIdx);
+
+            fragLen = pInvPair->end[1] - pInvPair->pos[0] + 1;
+            first = pInvPair->pos[0] + fragLen / 2.0;
+        }
+        else
+        {
+            pIdx = &idx5;
+            pAttrbt = invertedAttrbts[1].GetPointer(*pIdx);
+
+            fragLen = pInvPair->end[0] - pInvPair->pos[1] + 1;
+            first = pInvPair->pos[1] + fragLen / 2.0;
+        }
+
+        double fragLenMedian = libTable.GetFragLenMedian(pInvPair->readGrpID);
+
+        pAttrbt->origIndex = i;
+        pAttrbt->firstAttrbt = first;
+        pAttrbt->secondAttrbt = fragLen - fragLenMedian;
+        // bound scale is borrowed from Spanner
+        pAttrbt->firstBound = fragLenMedian * 1.25;
+        pAttrbt->secondBound = fragLenMedian;
+
+        ++(*pIdx);
+    }
+
+    invertedAttrbts[0].Sort(CompareAttrbt);
+    invertedAttrbts[1].Sort(CompareAttrbt);
+}
+
+void PairAttrbtTable::MakeSpecial(void)
+{
+    const Array<SpecialPair>& specialPairs = bamPairTable.specialPairs;
+
     for (unsigned int i = 0; i != specialSize; i += 2)
     {
         pSpecialAttrbts[i].Init(DEFALUT_NUM_RP);
@@ -98,7 +156,7 @@ void PairAttrbtTable::MakeSpecial(const Array<SpecialPair>& specialPairs)
 
         pAttrbt->origIndex = i;
 
-        double halfMedian = (double) pLibTable->GetFragLenMedian(pSpecialPair->readGrpID) / 2.0;
+        double halfMedian = (double) libTable.GetFragLenMedian(pSpecialPair->readGrpID) / 2.0;
         double halfMedians[2] = {halfMedian, -halfMedian};
         uint32_t pos[2] = {pSpecialPair->pos[0], pSpecialPair->end[0]};
 
@@ -107,7 +165,7 @@ void PairAttrbtTable::MakeSpecial(const Array<SpecialPair>& specialPairs)
         pAttrbt->firstAttrbt = pos[posIndex] + halfMedians[posIndex];
         pAttrbt->secondAttrbt = 0;
 
-        pAttrbt->firstBound = (double) (pLibTable->GetFragLenHigh(pSpecialPair->readGrpID) - pLibTable->GetFragLenLow(pSpecialPair->readGrpID)) * boundScale;
+        pAttrbt->firstBound = (double) (libTable.GetFragLenHigh(pSpecialPair->readGrpID) - libTable.GetFragLenLow(pSpecialPair->readGrpID)) * boundScale;
         pAttrbt->secondBound = 1e-3;
     }
 

@@ -30,14 +30,15 @@
 
 using namespace Tangram;
 
-Detector::Detector()
+Detector::Detector(const DetectPars& detectPars, const LibTable& libTable, const BamPairTable& bamPairTable)
+                  : pairAttrbtTable(libTable, bamPairTable), detectPars(detectPars), libTable(libTable), bamPairTable(bamPairTable)
 {
 
 }
 
 Detector::~Detector()
 {
-    unsigned int numSp = pLibTable->GetNumSpecialRef();
+    unsigned int numSp = libTable.GetNumSpecialRef();
     for (unsigned int i = 0; i != numSp; ++i)
     {
         for (unsigned int j = 0; j != pSpecialEventsTable[i].Size(); ++j)
@@ -54,13 +55,9 @@ Detector::~Detector()
         delete [] pSpecialEventsTable;
 }
 
-void Detector::Init(const DetectPars* pDetectPars, const LibTable* pLibTable, const BamPairTable* pBamPairTable)
+void Detector::Init(void)
 {
-    this->pDetectPars = pDetectPars;
-    this->pLibTable = pLibTable;
-    this->pBamPairTable = pBamPairTable;
-
-    int numSp = pLibTable->GetNumSpecialRef();
+    int numSp = libTable.GetNumSpecialRef();
     if (numSp > 0)
     {
         pSpecialEventsTable = new (std::nothrow) Array<SpecialEvent>[numSp];
@@ -69,13 +66,11 @@ void Detector::Init(const DetectPars* pDetectPars, const LibTable* pLibTable, co
     }
     else
         pSpecialEventsTable = NULL;
-
-    pairAttrbtTable.Init(pLibTable);
 }
 
 void Detector::CallEvents(void)
 {
-    unsigned int detectSet = pDetectPars->detectSet;
+    unsigned int detectSet = detectPars.detectSet;
 
     for (unsigned int i = SV_DELETION; i <= SV_INTER_CHR_TRNSLCTN; ++i)
     {
@@ -119,17 +114,340 @@ void Detector::CallTandemDup(void)
 
 void Detector::CallInversion(void)
 {
+    pairAttrbtTable.MakeInversion();
+
+    cluster3.Init(pairAttrbtTable.invertedAttrbts, detectPars.minClusterSize, DEFAULT_MIN_STD);
+    cluster5.Init(pairAttrbtTable.invertedAttrbts + 1, detectPars.minClusterSize, DEFAULT_MIN_STD);
+
+    cluster3.Make();
+    cluster5.Make();
+
+    MakeInversions();
+    MergeInversions();
+}
+
+void Detector::MakeInversions(void)
+{
+    const Array<LocalPair>& invPairs = bamPairTable.invertedPairs;
+
+    const Array<ClusterElmnt>* pCluster3 = cluster3.GetCluterElmnts();
+    const Array<ClusterElmnt>* pCluster5 = cluster5.GetCluterElmnts();
+
+    const Array<unsigned int>& next3 = cluster3.GetNextArray();
+    const Array<unsigned int>& next5 = cluster5.GetNextArray();
+
+    unsigned int actualNum3 = cluster3.GetActualNumElmnts();
+    unsigned int actualNum5 = cluster5.GetActualNumElmnts();
+    unsigned int actualNum = actualNum3 + actualNum5;
+
+    unsigned int numEvents3 = pCluster3->Size();
+    unsigned int numEvents5 = pCluster5->Size();
+
+    // merged events will be stored in this array
+    // so we make the capacity of this array bigger
+    invEvents[0].Init(actualNum);
+    invEvents[1].Init(actualNum5);
+
+    for (unsigned int i = 0; i != numEvents3; ++i)
+    {
+        const ClusterElmnt* pClusterElmnt = pCluster3->GetPointer(i);
+        
+        // skip the bad cluster
+        if (pClusterElmnt->numReadPair == 0)
+            continue;
+
+        unsigned int j = pClusterElmnt->startIndex;
+
+        unsigned int posMin5 = UINT_MAX;
+        unsigned int posMax5 = 0;
+        unsigned int endMax5 = 0;
+
+        unsigned int posMin3 = UINT_MAX;
+        unsigned int posMax3 = 0;
+        unsigned int endMax3 = 0;
+
+        Inversion* pNewInv = &(invEvents[0].End());
+        pNewInv->fragLenMax = 0;
+
+        const LocalPair* pInvPair = NULL;
+
+        do
+        {
+            unsigned int origIndex = (*cluster3.pPairAttrbts)[j].origIndex;
+            pInvPair = invPairs.GetPointer(origIndex);
+
+            unsigned int fragLenHigh = libTable.GetFragLenHigh(pInvPair->readGrpID);
+
+            if (fragLenHigh > pNewInv->fragLenMax)
+                pNewInv->fragLenMax = fragLenHigh;
+
+            if ((unsigned int) pInvPair->pos[0] < posMin5)
+                posMin5 = pInvPair->pos[0];
+            
+            if ((unsigned int) pInvPair->pos[0] > posMax5)
+                posMax5 = pInvPair->pos[0];
+
+            if ((unsigned int) pInvPair->end[0] > endMax5)
+                endMax5 = pInvPair->end[0];
+
+            if ((unsigned int) pInvPair->pos[1] < posMin3)
+                posMin3 = pInvPair->pos[1];
+
+            if ((unsigned int) pInvPair->pos[1] > posMax3)
+                posMax3 = pInvPair->pos[1];
+
+            if ((unsigned int) pInvPair->end[1] > endMax3)
+                endMax3 = pInvPair->end[1];
+
+            j = next3[j];
+
+        }while(j != pClusterElmnt->startIndex);
+
+        int pos = endMax5 + 1;
+        int len = endMax3 - endMax5;
+        int posU = ((posMax5 - posMin5) + (posMax3 - posMin3)) / (2 * pClusterElmnt->numReadPair);
+
+        // skip those events with negative length
+        if (len < 1)
+            continue;
+
+        pNewInv->refID = pInvPair->refID;
+
+        pNewInv->pos = pos;
+        pNewInv->posU = posU;
+        pNewInv->length = len;
+
+        pNewInv->numFrag[0] = pClusterElmnt->numReadPair;
+        pNewInv->numFrag[1] = 0;
+
+        pNewInv->clusterID[0] = pClusterElmnt->startIndex;
+        pNewInv->clusterID[1] = -1;
+
+        pNewInv->pos5[0] = posMin5;
+        pNewInv->pos5[1] = endMax5;
+
+        pNewInv->pos3[0] = posMin3;
+        pNewInv->pos3[1] = endMax3;
+
+        pNewInv->splitIdx = -1;
+
+        if (invEvents[0].Size() > 0 && IsInvOverlapped(invEvents[0].Last(), *pNewInv))
+        {
+            Inversion mergedInv;
+            DoInversionMerge(mergedInv, &(invEvents[0].Last()), pNewInv);
+
+            if (IsSignificantInv(mergedInv))
+                invEvents[0].Last() = mergedInv;
+        }
+        else
+        {
+            if (IsSignificantInv(*pNewInv))
+                invEvents[0].Increment();
+        }
+    }
+
+    invEvents[0].Sort(CompareInversion);
+
+    for (unsigned int i = 0; i != numEvents5; ++i)
+    {
+        const ClusterElmnt* pClusterElmnt = pCluster5->GetPointer(i);
+        
+        // skip the bad cluster
+        if (pClusterElmnt->numReadPair == 0)
+            continue;
+
+        unsigned int j = pClusterElmnt->startIndex;
+
+        unsigned int posMin5 = UINT_MAX;
+        unsigned int posMax5 = 0;
+        unsigned int endMax5 = 0;
+
+        unsigned int posMin3 = UINT_MAX;
+        unsigned int posMax3 = 0;
+        unsigned int endMax3 = 0;
+
+        Inversion* pNewInv = &(invEvents[1].End());
+        pNewInv->fragLenMax = 0;
+
+        const LocalPair* pInvPair = NULL;
+
+        do
+        {
+            unsigned int origIndex = (*cluster5.pPairAttrbts)[j].origIndex;
+            pInvPair = invPairs.GetPointer(origIndex);
+
+            unsigned int fragLenHigh = libTable.GetFragLenHigh(pInvPair->readGrpID);
+
+            if (fragLenHigh > pNewInv->fragLenMax)
+                pNewInv->fragLenMax = fragLenHigh;
+
+            if ((unsigned int) pInvPair->pos[0] < posMin5)
+                posMin5 = pInvPair->pos[0];
+
+            if ((unsigned int) pInvPair->pos[0] > posMax5)
+                posMax5 = pInvPair->pos[0];
+
+            if ((unsigned int) pInvPair->end[0] > endMax5)
+                endMax5 = pInvPair->end[0];
+
+            if ((unsigned int) pInvPair->pos[1] < posMin3)
+                posMin3 = pInvPair->pos[1];
+
+            if ((unsigned int) pInvPair->pos[1] > posMax3)
+                posMax3 = pInvPair->pos[1];
+
+            if ((unsigned int) pInvPair->end[1] > endMax3)
+                endMax3 = pInvPair->end[1];
+
+            j = next5[j];
+
+        }while(j != pClusterElmnt->startIndex);
+
+        int pos = posMin5;
+        int len = posMin3 - posMin5;
+
+        // position uncertainty
+        int posU = ((posMax5 - posMin5) + (posMax3 - posMin3)) / (2 * pClusterElmnt->numReadPair);
+
+        // skip those events with negative length
+        if (len < 1)
+            continue;
+
+        pNewInv->refID = pInvPair->refID;
+
+        pNewInv->pos = pos;
+        pNewInv->length = len;
+        pNewInv->posU = posU;
+
+        pNewInv->numFrag[0] = 0;
+        pNewInv->numFrag[1] = pClusterElmnt->numReadPair;
+
+        pNewInv->clusterID[0] = -1;
+        pNewInv->clusterID[1] = pClusterElmnt->startIndex;
+
+        pNewInv->pos5[0] = posMin5;
+        pNewInv->pos5[1] = endMax5;
+
+        pNewInv->pos3[0] = posMin3;
+        pNewInv->pos3[1] = endMax3;
+
+        if (invEvents[1].Size() > 0 && IsInvOverlapped(invEvents[1].Last(), *pNewInv))
+        {
+            Inversion mergedInv;
+            DoInversionMerge(mergedInv, &(invEvents[1].Last()), pNewInv);
+            if (IsSignificantInv(mergedInv))
+                invEvents[1].Last() = mergedInv;
+        }
+        else
+        {
+            if (IsSignificantInv(*pNewInv))
+                invEvents[1].Increment();
+        }
+    }
+
+    invEvents[1].Sort(CompareInversion);
+}
+
+bool Detector::IsInvOverlapped(const Inversion& prevInv, const Inversion& newInv)
+{
+    unsigned int prevEnd = prevInv.pos + prevInv.length;
+    unsigned int posDiff = abs((int) prevInv.pos - (int) newInv.pos);
+
+    if (prevEnd > newInv.pos && posDiff < newInv.fragLenMax)
+        return true;
+
+    return false;
+}
+
+bool Detector::IsSignificantInv(const Inversion& inv)
+{
+    if (inv.length < (unsigned int) detectPars.minEventLength)
+        return false;
+
+    return true;
+}
+
+void Detector::DoInversionMerge(Inversion& mergedInv, const Inversion* pHeadInv, const Inversion* pTailInv)
+{
+    if (pHeadInv->numFrag[0] == 0 && pTailInv->numFrag[0] > 0)
+        TGM_SWAP(pHeadInv, pTailInv, const Inversion*);
+
+    unsigned int headCount = pHeadInv->numFrag[0] + pHeadInv->numFrag[1];
+    unsigned int tailCount = pTailInv->numFrag[0] + pTailInv->numFrag[1];
+    unsigned int totalCount = headCount + tailCount;
+
+    mergedInv = *pHeadInv;
+    mergedInv.pos3[0] = (pHeadInv->pos3[0] < pTailInv->pos3[0] ? pHeadInv->pos3[0] : pTailInv->pos3[0]);
+    mergedInv.pos3[1] = (pHeadInv->pos3[1] > pTailInv->pos3[1] ? pHeadInv->pos3[1] : pTailInv->pos3[1]);
+    mergedInv.pos5[0] = (pHeadInv->pos5[0] < pTailInv->pos5[0] ? pHeadInv->pos5[0] : pTailInv->pos5[0]);
+    mergedInv.pos5[1] = (pHeadInv->pos5[1] > pTailInv->pos5[1] ? pHeadInv->pos5[1] : pTailInv->pos5[1]);
+
+    bool bothForward = (pHeadInv->numFrag[1] == 0) && (pTailInv->numFrag[1] == 0);
+    bool bothReversed = (pHeadInv->numFrag[0] == 0) && (pTailInv->numFrag[0] == 0);
+
+    if (bothForward)
+    {
+        mergedInv.pos = mergedInv.pos5[1] + 1;
+        mergedInv.length = mergedInv.pos3[1] - mergedInv.pos5[1] - 1;
+
+        cluster3.Connect(pHeadInv->clusterID[0], pTailInv->clusterID[0]);
+        mergedInv.clusterID[0] = pHeadInv->clusterID[0];
+    }
+    else if (bothReversed)
+    {
+        mergedInv.pos = mergedInv.pos5[0];
+        mergedInv.length = mergedInv.pos3[0] - mergedInv.pos5[0] - 1;
+
+        cluster5.Connect(pHeadInv->clusterID[1], pTailInv->clusterID[1]);
+        mergedInv.clusterID[1] = pHeadInv->clusterID[1];
+    }
+    else
+    {
+        mergedInv.pos5[0] = pHeadInv->pos5[0];
+        mergedInv.pos5[1] = (pHeadInv->pos5[1] * headCount + pTailInv->pos5[0] * tailCount) / totalCount;
+
+        mergedInv.pos3[0] = (pHeadInv->pos3[1] * headCount +  pTailInv->pos3[0] * tailCount) / totalCount;
+        mergedInv.pos3[1] = pTailInv->pos5[1];
+
+        mergedInv.pos = mergedInv.pos5[1];
+        mergedInv.length = mergedInv.pos3[0] - mergedInv.pos + 1;
+
+        if (pHeadInv->numFrag[0] > 0 && pTailInv->numFrag[0] > 0) 
+        {
+            cluster3.Connect(pHeadInv->clusterID[0], pTailInv->clusterID[0]);
+            mergedInv.clusterID[0] = pHeadInv->clusterID[0];
+        }
+        else if (pHeadInv->numFrag[1] > 0 && pTailInv->numFrag[1] > 0) 
+        {
+            cluster5.Connect(pHeadInv->clusterID[1], pTailInv->clusterID[1]);
+            mergedInv.clusterID[1] = pHeadInv->clusterID[1];
+        }
+        else
+        {
+            mergedInv.clusterID[1] = pTailInv->clusterID[1];
+        }
+    }
+
+    mergedInv.posU = DoubleRoundToInt((double) totalCount / ((double) headCount / pHeadInv->posU + (double) tailCount / pTailInv->posU));
+    mergedInv.numFrag[0] = pHeadInv->numFrag[0] + pTailInv->numFrag[0];
+    mergedInv.numFrag[1] = pHeadInv->numFrag[1] + pTailInv->numFrag[1];
+
+    mergedInv.fragLenMax = pHeadInv->fragLenMax > pTailInv->fragLenMax ? pHeadInv->fragLenMax : pTailInv->fragLenMax;
+}
+
+void Detector::MergeInversions(void)
+{
 
 }
 
 void Detector::CallSpecial(void)
 {
-    pairAttrbtTable.MakeSpecial(pBamPairTable->specialPairs);
+    pairAttrbtTable.MakeSpecial();
 
     for (unsigned int i = 0; i != pairAttrbtTable.specialSize; i += 2)
     {
-        cluster3.Init(pairAttrbtTable.pSpecialAttrbts + i, pDetectPars->minClusterSize, DEFAULT_MIN_STD);
-        cluster5.Init(pairAttrbtTable.pSpecialAttrbts + i + 1, pDetectPars->minClusterSize, DEFAULT_MIN_STD);
+        cluster3.Init(pairAttrbtTable.pSpecialAttrbts + i, detectPars.minClusterSize, DEFAULT_MIN_STD);
+        cluster5.Init(pairAttrbtTable.pSpecialAttrbts + i + 1, detectPars.minClusterSize, DEFAULT_MIN_STD);
 
         cluster3.Make();
         cluster5.Make();
@@ -150,7 +468,7 @@ void Detector::CallTranslocation(void)
 
 void Detector::MakeSpecialEvents(Array<SpecialEvent>& specialEvents)
 {
-    const Array<SpecialPair>& specialPairs = pBamPairTable->specialPairs;
+    const Array<SpecialPair>& specialPairs = bamPairTable.specialPairs;
 
     const Array<ClusterElmnt>* pCluster3 = cluster3.GetCluterElmnts();
     const Array<ClusterElmnt>* pCluster5 = cluster5.GetCluterElmnts();
@@ -197,8 +515,8 @@ void Detector::MakeSpecialEvents(Array<SpecialEvent>& specialEvents)
             unsigned int origIndex = (*cluster3.pPairAttrbts)[i].origIndex;
             pSpecialPair = specialPairs.GetPointer(origIndex);
 
-            unsigned int fragLenMedian = pLibTable->GetFragLenMedian(pSpecialPair->readGrpID);
-            unsigned int fragLenHigh = pLibTable->GetFragLenHigh(pSpecialPair->readGrpID);
+            unsigned int fragLenMedian = libTable.GetFragLenMedian(pSpecialPair->readGrpID);
+            unsigned int fragLenHigh = libTable.GetFragLenHigh(pSpecialPair->readGrpID);
 
             if (fragLenHigh > pSpecialEvent->fragLenMax)
                 pSpecialEvent->fragLenMax = fragLenHigh;
@@ -270,8 +588,8 @@ void Detector::MakeSpecialEvents(Array<SpecialEvent>& specialEvents)
             unsigned int origIndex = (*cluster5.pPairAttrbts)[i].origIndex;
             pSpecialPair = specialPairs.GetPointer(origIndex);
 
-            unsigned int fragLenMedian = pLibTable->GetFragLenMedian(pSpecialPair->readGrpID);
-            unsigned int fragLenHigh = pLibTable->GetFragLenHigh(pSpecialPair->readGrpID);
+            unsigned int fragLenMedian = libTable.GetFragLenMedian(pSpecialPair->readGrpID);
+            unsigned int fragLenHigh = libTable.GetFragLenHigh(pSpecialPair->readGrpID);
 
             if (fragLenHigh > pSpecialEvent->fragLenMax)
                 pSpecialEvent->fragLenMax = fragLenHigh;
@@ -318,7 +636,6 @@ void Detector::MakeSpecialEvents(Array<SpecialEvent>& specialEvents)
 
     specialEvents.Sort(CompareSpecialEvents);
 }
-
 
 void Detector::MergeSpecialEvents(Array<SpecialEvent>& specialEvents)
 {
@@ -434,7 +751,7 @@ void Detector::SetOrigIndices(Array<SpecialEvent>& specialEvents)
                 unsigned int origIndex = (*cluster3.pPairAttrbts)[memberIndex].origIndex;
                 pSpecialEvent->origIndex[0][j] = origIndex;
 
-                const SpecialPair& specialPair = pBamPairTable->specialPairs[origIndex];
+                const SpecialPair& specialPair = bamPairTable.specialPairs[origIndex];
                 if (specialPair.sStrand == 1)
                     pSpecialEvent->sense += 1.0;
                 else
@@ -464,7 +781,7 @@ void Detector::SetOrigIndices(Array<SpecialEvent>& specialEvents)
                 unsigned int origIndex = (*cluster5.pPairAttrbts)[memberIndex].origIndex;
                 pSpecialEvent->origIndex[1][j] = origIndex;
 
-                const SpecialPair& specialPair = pBamPairTable->specialPairs[origIndex];
+                const SpecialPair& specialPair = bamPairTable.specialPairs[origIndex];
                 if (specialPair.sStrand == 0)
                     pSpecialEvent->sense += 1.0;
                 else
