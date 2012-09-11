@@ -127,7 +127,7 @@ namespace Tangram
             data = (T*) calloc(sizeof(T), newCap);
             if (data == NULL)
             {
-                std::cerr << "ERROR: Not enough memory for the new element in array.\n";
+                std::cerr << "ERROR: Not enough memory for the new element in the array.\n";
                 exit(1);
             }
 
@@ -142,7 +142,7 @@ namespace Tangram
         data = (T*) realloc(data, sizeof(T) * newCap);
         if (data == NULL)
         {
-            std::cerr << "ERROR: Not enough memory for the new element in array.\n";
+            std::cerr << "ERROR: Not enough memory for the new element in the array.\n";
             exit(1);
         }
 

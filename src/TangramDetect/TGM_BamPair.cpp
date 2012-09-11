@@ -50,6 +50,8 @@ BamPairTable::BamPairTable(const LibTable& inLibTable, const FragLenTable& inFra
     specialPairs.Init(10);
     orphanPairs.Init(10);
     softPairs.Init(10);
+
+    numInverted3 = 0;
 }
 
 BamPairTable::~BamPairTable()

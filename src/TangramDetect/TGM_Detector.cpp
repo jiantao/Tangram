@@ -66,6 +66,9 @@ void Detector::Init(void)
     }
     else
         pSpecialEventsTable = NULL;
+
+    // initialize the pair attributes table
+    pairAttrbtTable.Init();
 }
 
 void Detector::CallEvents(void)
@@ -123,7 +126,7 @@ void Detector::CallInversion(void)
     cluster5.Make();
 
     MakeInversions();
-    MergeInversions();
+    // MergeInversions();
 }
 
 void Detector::MakeInversions(void)
@@ -437,6 +440,7 @@ void Detector::DoInversionMerge(Inversion& mergedInv, const Inversion* pHeadInv,
 
 void Detector::MergeInversions(void)
 {
+    /*  
     unsigned int numInv5 = invEvents[0].Size();
     unsigned int numInv3 = invEvents[1].Size();
 
@@ -444,6 +448,7 @@ void Detector::MergeInversions(void)
     {
         Inversion& inv5 = invEvents[0][i];
     }
+    */
 }
 
 void Detector::CallSpecial(void)
