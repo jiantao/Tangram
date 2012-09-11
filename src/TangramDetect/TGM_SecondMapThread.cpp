@@ -478,8 +478,8 @@ bool SecondMapThread::SecondFilterSpecial(bool& isRescued, RescuePartial& rescue
         }
         else
         {
-            actualPos = readLen - rescuePartial.readPos - 1;
-            actualEnd = readLen - rescuePartial.readEnd - 1;
+            actualPos = readLen - rescuePartial.readEnd - 1;
+            actualEnd = readLen - rescuePartial.readPos - 1;
         }
 
         // "T"
