@@ -21,7 +21,9 @@
 #include <string>
 
 #include "api/BamAlignment.h"
-#include "TGM_ObjPool.h"
+
+//#include "TGM_ObjPool.h"
+#include "TGM_Parameters.h"
 #include "TGM_LibTable.h"
 #include "TGM_Sequence.h"
 #include "TGM_FragLenTable.h"
@@ -263,7 +265,7 @@ namespace Tangram
     class BamPairTable
     {
         public:
-            BamPairTable(const LibTable& libTable, const FragLenTable& inFragLenTable, uint16_t minSoftSize = 10, uint8_t minMQ = 15, uint8_t minSpMQ = 0);
+            BamPairTable(const DetectPars& detectPars, const LibTable& libTable, const FragLenTable& inFragLenTable);
             ~BamPairTable();
 
             // update the bam pair table with the incoming alignment
@@ -353,21 +355,15 @@ namespace Tangram
             // ObjPool<std::string> readNames;
 
             // ObjIndex objIndex;
+            
+            // detector parameters
+            const DetectPars& detectPars;
 
             // reference to a library information table
             const LibTable& libTable;
 
             // reference to a fragment length distribution table
             const FragLenTable& fragLenTable;
-
-            // minimum number of soft clipping size of a soft pair
-            const uint16_t minSoftSize;
-
-            // minimum mapping quality threshold
-            const uint8_t minMQ;
-
-            // minimum special mapping quality threshold
-            const uint8_t minSpMQ;
 
             // pointer to the incoming bam alignment
             const BamTools::BamAlignment* pAlignment;

@@ -17,6 +17,7 @@
 
 #include <cstdlib>
 
+#include "TGM_Version.h"
 #include "TGM_Parameters.h"
 #include "TGM_Error.h"
 #include "TGM_GetOpt.h"
@@ -77,6 +78,8 @@ using namespace BamTools;
 #define DEFAULT_SPECIAL_MIN_MQ 20
 
 #define DEFAULT_DETECT_SET 0xffffffff
+
+#define DETECT_SET_MASK 0x0000001f
 
 #define MAX_REF_NAME_LEN 512
 
@@ -274,7 +277,18 @@ void Parameters::Set(const char** argv, int argc)
                 break;
             case OPT_DETECT_SET:
                 if (opts[i].value != NULL)
-                    sscanf(opts[i].value, "%x", &(detectPars.detectSet));
+                {
+                    if (opts[i].value[0] == '0')
+                        sscanf(opts[i].value, "%x", &(detectPars.detectSet));
+                    else
+                        sscanf(opts[i].value, "%d", &(detectPars.detectSet));
+                }
+
+                // the detection set can not be 0, otherwise no events will be called
+                if ((detectPars.detectSet & DETECT_SET_MASK) == 0)
+                    TGM_ErrQuit("ERROR: Please specify at least one type of SV to detect.\n");
+
+                alignerPars.detectSet = detectPars.detectSet;
 
                 break;
             case OPT_MIN_SCORE_RATE:
@@ -305,7 +319,6 @@ void Parameters::Set(const char** argv, int argc)
                 break;
         }
     }
-
 }
 
 void Parameters::ParseRangeStr(const BamMultiReader& multiReader)
@@ -398,6 +411,9 @@ void Parameters::SetBamFilenames(vector<string>& filenames)
 
 void Parameters::ShowHelp(void) const
 {
+    printf("\nProgram: tangram (Toolbox for structural variation detection)\n");
+    printf("Version: %s\n\n", TGM_VERSION);
+
     printf("Usage: tangram_detect [options] -lb <library_info> -ht <fragment_length_histogram> -in <bam_list> -rg <regions>\n\n");
 
     printf("Mandatory arguments: -lb   FILE   library information file\n");
@@ -412,7 +428,7 @@ void Parameters::ShowHelp(void) const
     printf("                     -mel  INT    minimum event lenth[100]\n");
     printf("                     -mq   INT    minimum mapping quality for pairs other than special pairs[20]\n");
     printf("                     -smq  INT    minimum mapping quality for special pairs[20]\n");
-    printf("                     -dt   INT    detection set\n");
+    printf("                     -dt   INT    detection set [0xffffffff: report all types of SV]\n");
     printf("                     -msr  FLOAT  minimum score rate for split alignments[0.8]\n");
     printf("                     -p    INT    number of processors (threads)[1]\n");
     printf("                     -help        print this help message\n");
@@ -422,6 +438,17 @@ void Parameters::ShowHelp(void) const
     printf("  1. A region should be presented in one of the following formats:\n\
     `1', `2:1000' and `X:1000-2000' (1-based). When a region is specified,\n\
     the input alignment file must be an indexed BAM file.\n\n");
+
+    printf("  2. Detection set is a bit set to indicate which types of SV will be detected.\n");
+    printf("     Each bit in this bit set corresponding to a type of SV event:\n\n");
+    printf("         DELETION        0x1 (hexadecimal) or 1 (decimal)\n");
+    printf("         TANDUM DUP      0x2 (hexadecimal) or 2 (decimal)\n");
+    printf("         INVERSION       0x4 (hexadecimal) or 4 (decimal)\n");
+    printf("         MEI             0x8 (hexadecimal) or 8 (decimal)\n\n");
+    printf("     To detect multiple types of SV events, just add all the corresponding numbers up.\n");
+    printf("     For example, if you only want to call DELETIONS and MEI, then the input value for\n");
+    printf("     `-dt' option will be 0x1(1) + 0x8(8) = 0x9(9). The `-dt' option can take either decimal\n");
+    printf("     or hexadecimal (start with `0x') number for input.\n\n");
 
     exit(EXIT_SUCCESS);
 }

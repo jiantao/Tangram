@@ -38,16 +38,22 @@ using namespace Tangram;
 
 // KHASH_MAP_INIT_STR(name, ObjIndex);
 
-BamPairTable::BamPairTable(const LibTable& inLibTable, const FragLenTable& inFraglenTable, uint16_t minSoftSize, uint8_t minMQ, uint8_t minSpMQ)
-              : libTable(inLibTable), fragLenTable(inFraglenTable), minSoftSize(minSoftSize), minMQ(minMQ), minSpMQ(minSpMQ)
+BamPairTable::BamPairTable(const DetectPars& detectPars, const LibTable& inLibTable, const FragLenTable& inFraglenTable)
+              : detectPars(detectPars), libTable(inLibTable), fragLenTable(inFraglenTable)
 {
     pairStat.spRef[0][2] = '\0';
     pairStat.spRef[1][2] = '\0';
 
     // readNameHash = kh_init(name);
-    longPairs.Init(10);
-    invertedPairs.Init(10);
-    specialPairs.Init(10);
+    if (detectPars.detectSet & (1 << (SV_DELETION - 1)))
+        longPairs.Init(10);
+
+    if (detectPars.detectSet & (1 << (SV_INVERSION - 1)))
+        invertedPairs.Init(10);
+
+    if (detectPars.detectSet & (1 << (SV_SPECIAL - 1)))
+        specialPairs.Init(10);
+
     orphanPairs.Init(10);
     softPairs.Init(10);
 
@@ -87,7 +93,8 @@ void BamPairTable::Update(const BamAlignment& alignment)
                 case PT_UNKNOWN:
                     break;
                 case PT_LONG:
-                    UpdateLocalPair(longPairs);
+                    if (detectPars.detectSet & (1 << (SV_DELETION - 1)))
+                        UpdateLocalPair(longPairs);
                     break;
                 case PT_SHORT:
                     // UpdateLocalPair(shortPairs);
@@ -97,14 +104,16 @@ void BamPairTable::Update(const BamAlignment& alignment)
                     break;
                 case PT_INVERTED3:
                 case PT_INVERTED5:
-                    UpdateInvertedPair();
+                    if (detectPars.detectSet & (1 << (SV_INVERSION - 1)))
+                        UpdateInvertedPair();
                     break;
                 case PT_SPECIAL3:
                 case PT_SPECIAL5:
-                    UpdateSpecialPair();
+                    if (detectPars.detectSet & (1 << (SV_SPECIAL - 1)))
+                        UpdateSpecialPair();
                     break;
                 case PT_CROSS:
-                    UpdateCrossPair();
+                    // UpdateCrossPair();
                     break;
                 case PT_SOFT3:
                 case PT_SOFT5:
@@ -486,7 +495,7 @@ PairType BamPairTable::GetPairType(bool isUpMate)
         return PT_UNKNOWN;
     else if (pairStat.spRef[0][0] == ' ' && pairStat.spRef[1][0] != ' ')
     {
-        if (pairStat.bestMQ[0] > minSpMQ)
+        if (pairStat.bestMQ[0] > detectPars.spMinMQ)
         {
             switch (pairStat.orient)
             {
@@ -512,7 +521,7 @@ PairType BamPairTable::GetPairType(bool isUpMate)
     }
     else if (pairStat.spRef[0][0] != ' ' && pairStat.spRef[1][0] == ' ')
     {
-        if (pairStat.bestMQ[1] >= minSpMQ)
+        if (pairStat.bestMQ[1] >= detectPars.spMinMQ)
         {
             switch(pairStat.orient)
             {
@@ -554,26 +563,26 @@ PairType BamPairTable::GetPairType(bool isUpMate)
             return PT_SHORT;
         else
         {
-            unsigned int upSoftSize = pairStat.softSize[0][0] + pairStat.softSize[0][1];
-            unsigned int downSoftSize = pairStat.softSize[1][0] + pairStat.softSize[1][1];
+            int upSoftSize = pairStat.softSize[0][0] + pairStat.softSize[0][1];
+            int downSoftSize = pairStat.softSize[1][0] + pairStat.softSize[1][1];
 
-            if (upSoftSize < minSoftSize && downSoftSize < minSoftSize)
+            if (upSoftSize < detectPars.minSoftSize && downSoftSize < detectPars.minSoftSize)
             {
                 return PT_NORMAL;
             }
-            else if ( upSoftSize >= minSoftSize && downSoftSize >= minSoftSize)
+            else if ( upSoftSize >= detectPars.minSoftSize && downSoftSize >= detectPars.minSoftSize)
             {
                 return PT_UNKNOWN;
             }
             else
             {
                 // we need to skip the anchor mate in a soft pair
-                if ((isUpMate && downSoftSize >= minSoftSize) || (!isUpMate && upSoftSize >= minSoftSize))
+                if ((isUpMate && downSoftSize >= detectPars.minSoftSize) || (!isUpMate && upSoftSize >= detectPars.minSoftSize))
                     return PT_UNKNOWN;
 
-                if (pairStat.softSize[0][0] >= minSoftSize || pairStat.softSize[1][0] >= minSoftSize)
+                if (pairStat.softSize[0][0] >= detectPars.minSoftSize || pairStat.softSize[1][0] >= detectPars.minSoftSize)
                     return PT_SOFT3;
-                else if (pairStat.softSize[0][1] >= minSoftSize || pairStat.softSize[1][1] >= minSoftSize)
+                else if (pairStat.softSize[0][1] >= detectPars.minSoftSize || pairStat.softSize[1][1] >= detectPars.minSoftSize)
                     return PT_SOFT5;
                 else
                     return PT_UNKNOWN;
@@ -635,7 +644,7 @@ void BamPairTable::UpdateOrphanPair(void)
         else
             return;
 
-        if (pairStat.bestMQ[0] < minMQ)
+        if (pairStat.bestMQ[0] < detectPars.minMQ)
             return;
 
         if (orphanPairs.IsFull())
@@ -761,7 +770,7 @@ void BamPairTable::UpdateLocalPair(Array<LocalPair>& localPairs)
     if (pAlignment->Position > pAlignment->MatePosition)
         return;
 
-    if (pairStat.bestMQ[0] < minMQ || pairStat.bestMQ[1] < minMQ)
+    if (pairStat.bestMQ[0] < detectPars.minMQ || pairStat.bestMQ[1] < detectPars.minMQ)
         return;
 
     if (localPairs.IsFull())
@@ -802,7 +811,7 @@ void BamPairTable::UpdateInvertedPair(void)
     if (pAlignment->Position > pAlignment->MatePosition)
         return;
 
-    if (pairStat.bestMQ[0] < minMQ || pairStat.bestMQ[1] < minMQ)
+    if (pairStat.bestMQ[0] < detectPars.minMQ || pairStat.bestMQ[1] < detectPars.minMQ)
         return;
 
     if (invertedPairs.IsFull())
@@ -875,14 +884,14 @@ void BamPairTable::UpdateSoftPair(void)
 
     if (newSoftPair.pos <= newSoftPair.matePos)
     {
-        if (pairStat.bestMQ[1] < minMQ)
+        if (pairStat.bestMQ[1] < detectPars.minMQ)
             return;
 
         newSoftPair.end = pairStat.end[0];
     }
     else
     {
-        if (pairStat.bestMQ[0] < minMQ)
+        if (pairStat.bestMQ[0] < detectPars.minMQ)
             return;
 
         newSoftPair.end = pairStat.end[1];

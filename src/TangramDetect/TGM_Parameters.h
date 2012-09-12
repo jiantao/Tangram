@@ -140,6 +140,8 @@ namespace Tangram
 
         int16_t distFilter;
 
+        uint32_t detectSet;
+
         int minAlignedLen;
 
         int numThread;
@@ -168,6 +170,7 @@ namespace Tangram
             flag |= 0x0f;
             scoreFilter = 0;
             distFilter = 32767;
+            detectSet = 0xffffffff;
             minAlignedLen = DEFAULT_MIN_ALIGNED_LEN;
             numThread = DEFAULT_THREAD_NUM;
             minScoreRate = DEFAULT_MIN_SCORE_RATE;

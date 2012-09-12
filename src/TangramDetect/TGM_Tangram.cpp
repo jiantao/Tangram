@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     parameters.ParseRangeStr(bamMultiReader);
     parameters.SetRange(bamMultiReader, libTable.GetFragLenMax());
 
-    BamPairTable bamPairTable(libTable, fragLenTable, detectPars.minSoftSize, detectPars.minMQ, detectPars.spMinMQ);
+    BamPairTable bamPairTable(detectPars, libTable, fragLenTable);
 
     // iterate through the bam files and fill the bam pair table
     BamAlignment alignment;

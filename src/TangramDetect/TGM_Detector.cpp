@@ -77,26 +77,27 @@ void Detector::CallEvents(void)
 
     for (unsigned int i = SV_DELETION; i <= SV_INTER_CHR_TRNSLCTN; ++i)
     {
+        unsigned int shiftSize = i - 1;
         switch(i)
         {
             case SV_DELETION:
-                if ((detectSet & (1 << i)) != 0)
+                if ((detectSet & (1 << shiftSize)) != 0)
                     CallDeletion();
                 break;
             case SV_TANDEM_DUP:
-                if ((detectSet & (1 << i)) != 0)
+                if ((detectSet & (1 << shiftSize)) != 0)
                     CallTandemDup();
                 break;
             case SV_INVERSION:
-                if ((detectSet & (1 << i)) != 0)
+                if ((detectSet & (1 << shiftSize)) != 0)
                     CallInversion();
                 break;
             case SV_SPECIAL:
-                if ((detectSet & (1 << i)) != 0)
+                if ((detectSet & (1 << shiftSize)) != 0)
                     CallSpecial();
                 break;
             case SV_INTER_CHR_TRNSLCTN:
-                if ((detectSet & (1 << i)) != 0)
+                if ((detectSet & (1 << shiftSize)) != 0)
                     CallTranslocation();
                 break;
             default:
@@ -151,6 +152,7 @@ void Detector::MakeInversions(void)
     invEvents[0].Init(actualNum);
     invEvents[1].Init(actualNum5);
 
+    // loop over the 3' clusters (3' mate of the fragment is in the inverted region)
     for (unsigned int i = 0; i != numEvents3; ++i)
     {
         const ClusterElmnt* pClusterElmnt = pCluster3->GetPointer(i);
@@ -174,6 +176,7 @@ void Detector::MakeInversions(void)
 
         const LocalPair* pInvPair = NULL;
 
+        // loop over the inverted pairs in the current cluster
         do
         {
             unsigned int origIndex = (*cluster3.pPairAttrbts)[j].origIndex;
@@ -232,8 +235,10 @@ void Detector::MakeInversions(void)
         pNewInv->pos3[0] = posMin3;
         pNewInv->pos3[1] = endMax3;
 
+        // index pointing to the split-read signal
         pNewInv->splitIdx = -1;
 
+        // merge the new event with the previous event if they overlap
         if (invEvents[0].Size() > 0 && IsInvOverlapped(invEvents[0].Last(), *pNewInv))
         {
             Inversion mergedInv;
@@ -251,6 +256,7 @@ void Detector::MakeInversions(void)
 
     invEvents[0].Sort(CompareInversion);
 
+    // loop over the 5' clusters (5' of the fragment is in the inverted region)
     for (unsigned int i = 0; i != numEvents5; ++i)
     {
         const ClusterElmnt* pClusterElmnt = pCluster5->GetPointer(i);
@@ -269,11 +275,13 @@ void Detector::MakeInversions(void)
         unsigned int posMax3 = 0;
         unsigned int endMax3 = 0;
 
+        // the new event will be stored in the element after the last one
         Inversion* pNewInv = &(invEvents[1].End());
         pNewInv->fragLenMax = 0;
 
         const LocalPair* pInvPair = NULL;
 
+        // loop over the inverted pairs in the current cluster
         do
         {
             unsigned int origIndex = (*cluster5.pPairAttrbts)[j].origIndex;
@@ -284,23 +292,23 @@ void Detector::MakeInversions(void)
             if (fragLenHigh > pNewInv->fragLenMax)
                 pNewInv->fragLenMax = fragLenHigh;
 
-            if ((unsigned int) pInvPair->pos[0] < posMin5)
-                posMin5 = pInvPair->pos[0];
+            if ((unsigned int) pInvPair->pos[1] < posMin5)
+                posMin5 = pInvPair->pos[1];
 
-            if ((unsigned int) pInvPair->pos[0] > posMax5)
-                posMax5 = pInvPair->pos[0];
+            if ((unsigned int) pInvPair->pos[1] > posMax5)
+                posMax5 = pInvPair->pos[1];
 
-            if ((unsigned int) pInvPair->end[0] > endMax5)
-                endMax5 = pInvPair->end[0];
+            if ((unsigned int) pInvPair->end[1] > endMax5)
+                endMax5 = pInvPair->end[1];
 
-            if ((unsigned int) pInvPair->pos[1] < posMin3)
-                posMin3 = pInvPair->pos[1];
+            if ((unsigned int) pInvPair->pos[0] < posMin3)
+                posMin3 = pInvPair->pos[0];
 
-            if ((unsigned int) pInvPair->pos[1] > posMax3)
-                posMax3 = pInvPair->pos[1];
+            if ((unsigned int) pInvPair->pos[0] > posMax3)
+                posMax3 = pInvPair->pos[0];
 
-            if ((unsigned int) pInvPair->end[1] > endMax3)
-                endMax3 = pInvPair->end[1];
+            if ((unsigned int) pInvPair->end[0] > endMax3)
+                endMax3 = pInvPair->end[0];
 
             j = next5[j];
 
@@ -334,10 +342,15 @@ void Detector::MakeInversions(void)
         pNewInv->pos3[0] = posMin3;
         pNewInv->pos3[1] = endMax3;
 
+        // index pointing to the split-read signal
+        pNewInv->splitIdx = -1;
+
+        // merge the new event with the previous event if they overlap
         if (invEvents[1].Size() > 0 && IsInvOverlapped(invEvents[1].Last(), *pNewInv))
         {
             Inversion mergedInv;
             DoInversionMerge(mergedInv, &(invEvents[1].Last()), pNewInv);
+
             if (IsSignificantInv(mergedInv))
                 invEvents[1].Last() = mergedInv;
         }
