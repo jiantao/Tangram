@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include "TGM_Utilities.h"
 #include "TGM_SecondMapThread.h"
 
 using namespace std;
@@ -182,7 +183,14 @@ void SecondMapThread::SearchEventTries(Array<EventTry>& eventTries, const SplitE
 
 bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq, RescuePartial& rescuePartial)
 {
-    const unsigned int failLimit = (splitEvent.size3 + splitEvent.size5) / 2;
+    if (splitEvent.majorCount == 0)
+        return false;
+
+    // increase the failLimit to gain more sensitivity
+    unsigned int failLimit = DoubleRoundToInt((double) splitEvent.majorCount * 0.6);
+    if (failLimit == splitEvent.majorCount)
+        failLimit = splitEvent.majorCount - 1;
+
     unsigned int failCount = 0;
 
     // align the second half read to the entire special reference
@@ -205,7 +213,10 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
         s_align* pSecAlignment = AlignSecPartial(isRescued, rescuePartial, doOtherFirst, isReversed, polyALen, firstPartial, refRegion, minusSeq, secondFilter);
         if (pSecAlignment == NULL)
         {
-            ++failCount;
+            // failure count only increase when this is a major partial alignment (unaligned part is long enough)
+            if (firstPartial.isMajor != 0)
+                ++failCount;
+
             // quit if more than half of the first partial alingments cannot find their second partials
             if (failCount > failLimit)
             {
@@ -235,7 +246,10 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
         s_align* pSecAlignment = AlignSecPartial(isRescued, rescuePartial, doOtherFirst, isReversed, polyALen, firstPartial, refRegion, minusSeq, secondFilter);
         if (pSecAlignment == NULL)
         {
-            ++failCount;
+            // failure count only increase when this is a major partial alignment (unaligned part is long enough)
+            if (firstPartial.isMajor != 0)
+                ++failCount;
+
             if (failCount > failLimit)
             {
                 CleanUpSecond(splitEvent);

@@ -53,6 +53,8 @@ namespace Tangram
 
     static const int DEFAULT_MIN_ALIGNED_LEN = 15;
 
+    static const int DEFAULT_MIN_TRIGGER_LEN = 30;
+
     static const int EDGE_TOLERANCE = 5;
 
     static const double DEFAULT_MIN_SCORE_RATE = 0.8;
@@ -144,6 +146,8 @@ namespace Tangram
 
         int minAlignedLen;
 
+        int minTriggerLen;
+
         int numThread;
 
         double minScoreRate;
@@ -172,6 +176,7 @@ namespace Tangram
             distFilter = 32767;
             detectSet = 0xffffffff;
             minAlignedLen = DEFAULT_MIN_ALIGNED_LEN;
+            minTriggerLen = DEFAULT_MIN_TRIGGER_LEN;
             numThread = DEFAULT_THREAD_NUM;
             minScoreRate = DEFAULT_MIN_SCORE_RATE;
             minEntropy = DEFAULT_MIN_ENTROPY;

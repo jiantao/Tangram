@@ -380,6 +380,7 @@ void Aligner::InsertNewSplitEvent(const Array<PrtlAlgnmnt>& firstPartials, const
     SplitEvent& event = splitEvents.End();
     splitEvents.Increment();
 
+
     event.size3 = count3;
     event.size5 = count5;
 
@@ -394,6 +395,8 @@ void Aligner::InsertNewSplitEvent(const Array<PrtlAlgnmnt>& firstPartials, const
     event.refID = -1;
     event.pos = -1;
     event.len = 0;
+
+    event.majorCount = 0;
 
     if (count3 > 0)
     {
@@ -415,10 +418,40 @@ void Aligner::InsertNewSplitEvent(const Array<PrtlAlgnmnt>& firstPartials, const
     unsigned int currEnd = currStart + simpleRegion.count;
     for (unsigned int j = currStart; j != currEnd; ++j)
     {
+        const OrphanPair& orphanPair = bamPairTable.orphanPairs[firstPartials[j].origIdx];
+        int readLen = orphanPair.read.len;
+        int alignedLen = firstPartials[j].readEnd - firstPartials[j].readPos + 1;
+
         if (firstPartials[j].partialType == PARTIAL_3)
-            event.first3[idx3++] = firstPartials[j];
+        {
+            event.first3[idx3] = firstPartials[j];
+            // here the major partial alignments are those
+            // have long enough unaligned sequence (>= trigger lenght)
+            if (readLen - alignedLen >= pars.minTriggerLen)
+            {
+                event.first3[idx3].isMajor = 1;
+                ++event.majorCount;
+            }
+            else
+                event.first3[idx3].isMajor = 0;
+
+            ++idx3;
+        }
         else
-            event.first5[idx5++] = firstPartials[j];
+        {
+            event.first5[idx5] = firstPartials[j];
+            // here the major partial alignments are those
+            // have long enough unaligned sequence (>= trigger lenght)
+            if (readLen - alignedLen >= pars.minTriggerLen)
+            {
+                event.first5[idx5].isMajor = 1;
+                ++event.majorCount;
+            }
+            else
+                event.first5[idx5].isMajor = 0;
+
+            ++idx5;
+        }
     }
 }
 
