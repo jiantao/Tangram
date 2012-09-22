@@ -393,7 +393,8 @@ void Parameters::SetRange(BamMultiReader& multiReader, const int32_t& maxFragLen
             end = refVector[detectPars.refID].RefLength;
     }
 
-    multiReader.SetRegion(detectPars.refID, start, detectPars.refID, end);
+    if (!multiReader.SetRegion(detectPars.refID, start, detectPars.refID, end))
+        TGM_ErrQuit("ERROR: Cannot set the detection region.\n");
 }
 
 void Parameters::SetBamFilenames(vector<string>& filenames)
