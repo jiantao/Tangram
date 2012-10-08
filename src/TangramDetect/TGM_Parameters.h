@@ -39,6 +39,9 @@ namespace Tangram
                                                   -4, -4,  2, -4, -4, // G
                                                   -4, -4, -4,  2, -4, // T
                                                   -4, -4, -4, -4, -4};// N
+
+    static const unsigned char DEFAULT_MIN_MQ = 20;
+
     static const uint8_t DEFAULT_GAP_OPEN = 3;
 
     static const uint8_t DEFAULT_GAP_EXT = 1;
@@ -75,6 +78,11 @@ namespace Tangram
     
     static const int DEFAULT_THREAD_NUM = 1;
 
+    static const int32_t DEFAULT_MIN_JUMP_LEN = 500000;
+
+    static const int DEFAULT_MIN_RP_FRAG = 2;
+
+    static const int DEFAULT_MIN_SR_FRAG = 5;
 
     class DetectPars
     {
@@ -192,11 +200,37 @@ namespace Tangram
         }
     };
 
+    struct GenotypePars
+    {
+        unsigned char minMQ;
+
+        int minCrossLen;
+
+        unsigned int minRpFrag;
+
+        unsigned int minSrFrag;
+
+        int32_t minJumpLen;
+
+        GenotypePars()
+        {
+            minMQ = DEFAULT_MIN_MQ;
+
+            minRpFrag = DEFAULT_MIN_RP_FRAG;
+
+            minSrFrag = DEFAULT_MIN_SR_FRAG;
+
+            minCrossLen = DEFAULT_MIN_ALIGNED_LEN;
+
+            minJumpLen = DEFAULT_MIN_JUMP_LEN;
+        }
+    };
+
     class Parameters
     {
         public:
 
-            Parameters(DetectPars& detectPars, AlignerPars& aligerPars);
+            Parameters(DetectPars& detectPars, AlignerPars& aligerPars, GenotypePars& genotypePars);
 
             ~Parameters();
 
@@ -217,6 +251,8 @@ namespace Tangram
             DetectPars& detectPars;
 
             AlignerPars& alignerPars;
+
+            GenotypePars& genotypePars;
     };
 };
 

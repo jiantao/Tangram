@@ -126,6 +126,28 @@ void BamPairTable::Update(const BamAlignment& alignment)
     }
 }
 
+PairType BamPairTable::CheckPairType(int32_t& readGrpID, const BamAlignment& alignment)
+{
+    pAlignment = &alignment;
+
+    if (BamPairFilter())
+    {
+        if (IsOrphanPair())
+        {
+            return PT_UNKNOWN;
+        }
+        else if (SetPairStat())
+        {
+            readGrpID = pairStat.readGrpID;
+            return ((PairType) pairStat.readPairType);
+        }
+        else
+            return PT_UNKNOWN;
+    }
+    else
+        return PT_UNKNOWN;
+}
+
 bool BamPairTable::BamPairFilter(void) const
 {
     // filter out those alignment that:

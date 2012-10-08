@@ -27,7 +27,7 @@ using namespace Tangram;
 Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, const LibTable& libTable, const BamPairTable& bamPairTable)
                 : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable)
 {
-    InitFeatures();
+
 }
 
 Printer::~Printer()
@@ -35,39 +35,56 @@ Printer::~Printer()
 
 }
 
+void Printer::Init(void)
+{
+    InitOutputGrp();
+    
+    InitPrintSubset();
+
+    InitPrintElmnts();
+}
+
 void Printer::Print(void)
 {
-    for (unsigned int i = 0; i != NUM_SV_TYPES; ++i)
+    PrintHeader();
+
+    PrintElmnt element;
+    PrintElmnt temp;
+    while (printElmnts.size() > 0)
     {
-        switch (i)
+        element = *(printElmnts.begin());
+
+        switch(element.svType)
         {
             case SV_SPECIAL:
-                PrintSpecial();
+                PrintSpecial(element);
+                break;
+            case SV_INVERSION:
                 break;
             default:
                 break;
         }
+
+        int road = element.subsetIdx;
+        printElmnts.erase(printElmnts.begin());
+
+        if (GetNextPrintElmnt(temp, road))
+            printElmnts.insert(temp);
     }
 }
 
-void Printer::PrintSpecial(void)
+void Printer::InitPrintSubset(void)
 {
-    FILE* fpOutput = NULL;
-    if (detectPars.outputPrefix != NULL)
-    {
-        string outputFile(detectPars.outputPrefix);
-        outputFile += ".mei.vcf";
-        fpOutput = fopen(outputFile.c_str(), "w");
-        if (fpOutput == NULL)
-            TGM_ErrQuit("Error: Cannot open the MEI VCF file: %s\n", outputFile.c_str());
-    }
-
     unsigned int numSp = libTable.GetNumSpecialRef();
-    unsigned int numSamples = libTable.GetNumSamples();
+    unsigned int numFamily = 0;
 
-    PrintSpecialHeader(fpOutput);
-    sampleMap.Init(numSamples);
-    sampleMap.SetSize(numSamples);
+    if (pAligner != NULL)
+        numFamily = pRef->familyName.size();
+
+    unsigned int numMax = numSp + numFamily;
+    printSubset.Init(numMax);
+     
+    unsigned int subsetIdx = 0;
 
     for (unsigned int i = 0; i != numSp; ++i)
     {
@@ -83,29 +100,21 @@ void Printer::PrintSpecial(void)
         if (pAligner != NULL)
             pSplitSpecials = pAligner->GetSpecialStartFromZA(splitLen, i);
 
-        InitPrintIdx(numEvents, splitLen);
+        if (numEvents == 0 && splitLen == 0)
+            continue;
 
-        while (GetNextSpecial(pRpSpecials, pSplitSpecials))
-        {
-            sampleMap.MemSet(0);
-            InitFeatures();
+        printSubset[subsetIdx].pRpSpecials = pRpSpecials;
+        printSubset[subsetIdx].rpSize = numEvents;
+        printSubset[subsetIdx].rpIdx = 0;
 
-            if (printIdx.pRpSpecial != NULL)
-                SetSampleInfoRpSpecial(*(printIdx.pRpSpecial));
+        printSubset[subsetIdx].pSplitEvents = pSplitSpecials;
+        printSubset[subsetIdx].srSize = splitLen;
+        printSubset[subsetIdx].srIdx = 0;
 
-            if (printIdx.pSplitEvent != NULL)
-                SetSampleInfoSplit(*(printIdx.pSplitEvent));
+        printSubset[subsetIdx].svType = SV_SPECIAL;
 
-            // SetSampleString();
-            SetSpecialFeatures(i);
-            PrintSpecialBody(fpOutput);
-
-            /*  
-            printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
-                    features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
-                    features.pos3[0], features.pos3[1], formatted.str().c_str());
-            */
-        }
+        ++subsetIdx;
+        printSubset.Increment();
     }
 
     if (pAligner != NULL)
@@ -120,30 +129,150 @@ void Printer::PrintSpecial(void)
                 unsigned int len = 0;
                 const SplitEvent* pSplitSpecials = pAligner->GetSpecialStartFromFamily(len, i);
 
-                for (unsigned int j = 0; j != len; ++j)
-                {
-                    sampleMap.MemSet(0);
-                    InitFeatures();
+                if (len == 0)
+                    continue;
 
-                    SetSampleInfoSplit(pSplitSpecials[j]);
+                printSubset[subsetIdx].pRpSpecials = NULL;
+                printSubset[subsetIdx].rpSize = 0;
+                printSubset[subsetIdx].rpIdx = 0;
 
-                    // SetSampleString();
-                    SetSpecialFeaturesFromSplit(pSplitSpecials[j]);
+                printSubset[subsetIdx].pSplitEvents = pSplitSpecials;
+                printSubset[subsetIdx].srSize = len;
+                printSubset[subsetIdx].srIdx = 0;
 
-                    PrintSpecialBody(fpOutput);
+                printSubset[subsetIdx].svType = SV_SPECIAL;
 
-                    /*
-                    printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
-                            features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
-                            features.pos3[0], features.pos3[1], formatted.str().c_str());
-                    */
-                }
+                ++subsetIdx;
+                printSubset.Increment();
             }
         }
     }
 }
 
-void Printer::PrintSpecialHeader(FILE* fpOutput)
+void Printer::InitPrintElmnts(void)
+{
+    unsigned int subsetSize = printSubset.Size();
+
+    PrintElmnt element;
+    for (unsigned int i = 0; i != subsetSize; ++i)
+    {
+        if (GetNextPrintElmnt(element, i));
+            printElmnts.insert(element);
+    }
+}
+
+bool Printer::GetNextPrintElmnt(PrintElmnt& element, int subsetIdx)
+{
+    bool ret = false;
+    switch (printSubset[subsetIdx].svType)
+    {
+        case SV_SPECIAL:
+            ret = GetNextSpecial(element, subsetIdx);
+            break;
+        case SV_INVERSION:
+            break;
+        default:
+            break;
+    }
+
+    return ret;
+}
+
+bool Printer::GetNextSpecial(PrintElmnt& element, int subsetIdx)
+{
+    PrintSubset& subset = printSubset[subsetIdx];
+
+    element.pRpSpecial = NULL;
+    while (subset.rpIdx < subset.rpSize)
+    {
+        if (subset.pRpSpecials[subset.rpIdx].splitIdx >= 0)
+            ++(subset.rpIdx);
+        else
+        {
+            element.pRpSpecial = subset.pRpSpecials + subset.rpIdx;
+            break;
+        }
+    }
+
+    if (subset.srIdx == subset.srSize)
+        element.pSplitEvent = NULL;
+    else
+        element.pSplitEvent = subset.pSplitEvents + subset.srIdx;
+
+    if (element.pRpSpecial == NULL && element.pSplitEvent == NULL)
+        return false;
+    if (element.pRpSpecial != NULL && element.pSplitEvent != NULL)
+    {
+        if (element.pRpSpecial->pos <= (unsigned int) element.pSplitEvent->pos)
+            element.pSplitEvent = NULL;
+        else
+            element.pRpSpecial = NULL;
+    }
+
+    if (element.pRpSpecial != NULL)
+    {
+        element.pos = element.pRpSpecial->pos;
+        ++(subset.rpIdx);
+    }
+
+    if (element.pSplitEvent != NULL)
+    {
+        element.pos = element.pSplitEvent->pos;
+
+        int rpIdx = element.pSplitEvent->rpIdx;
+        if (rpIdx >= 0)
+        {
+            element.pRpSpecial = subset.pRpSpecials + rpIdx;
+        }
+
+        ++(subset.srIdx);
+    }
+
+    element.subsetIdx = subsetIdx;
+    element.svType = SV_SPECIAL;
+
+    return true;
+}
+
+void Printer::PrintHeader(void)
+{
+    for (unsigned int i = SV_DELETION; i <= SV_INTER_CHR_TRNSLCTN; ++i)
+    {
+        unsigned int shiftSize = i - 1;
+        string outputFile;
+
+        switch(i)
+        {
+            case SV_DELETION:
+                break;
+            case SV_TANDEM_DUP:
+                break;
+            case SV_INVERSION:
+                break;
+            case SV_SPECIAL:
+                if ((detectPars.detectSet & (1 << shiftSize)) != 0)
+                {
+                    if (detectPars.outputPrefix != NULL)
+                    {
+                        string outputFile(detectPars.outputPrefix);
+                        outputFile += ".mei.vcf";
+                        outputGrp.fpSpecial = fopen(outputFile.c_str(), "w");
+                        if (outputGrp.fpSpecial == NULL)
+                            TGM_ErrQuit("Error: Cannot open the MEI VCF file: %s\n", outputFile.c_str());
+                    }
+
+                    PrintSpecialHeader();
+                }
+                break;
+            case SV_INTER_CHR_TRNSLCTN:
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void Printer::PrintSpecialHeader(void)
 {
     time_t     now = time(0);
     struct tm  tstruct;
@@ -151,7 +280,7 @@ void Printer::PrintSpecialHeader(FILE* fpOutput)
     tstruct = *localtime(&now);
     strftime(buf, sizeof(buf), "%Y%m%d", &tstruct);
 
-    if (fpOutput == NULL)
+    if (outputGrp.fpSpecial == NULL)
     {
         printf("##fileformat=VCFv4.1\n"
                "##fileDate=%s\n"
@@ -174,7 +303,7 @@ void Printer::PrintSpecialHeader(FILE* fpOutput)
     }
     else
     {
-        fprintf(fpOutput, 
+        fprintf(outputGrp.fpSpecial, 
                "##fileformat=VCFv4.1\n"
                "##fileDate=%s\n"
                "##source=Tangram\n"
@@ -192,7 +321,7 @@ void Printer::PrintSpecialHeader(FILE* fpOutput)
                "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
                buf);
 
-        fprintf(fpOutput, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+        fprintf(outputGrp.fpSpecial, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
     }
 
     const Array<char*>& sampleNames = libTable.GetSampleNames();
@@ -200,26 +329,68 @@ void Printer::PrintSpecialHeader(FILE* fpOutput)
     unsigned int numSamples = sampleNames.Size();
     for (unsigned int i = 0; i != numSamples; ++i)
     {
-        if (fpOutput == NULL)
+        if (outputGrp.fpSpecial == NULL)
             printf("\t%s", sampleNames[i]);
         else
-            fprintf(fpOutput, "\t%s", sampleNames[i]);
+            fprintf(outputGrp.fpSpecial, "\t%s", sampleNames[i]);
 
     }
 
-    if (fpOutput == NULL)
+    if (outputGrp.fpSpecial == NULL)
         printf("\n");
     else
-        fprintf(fpOutput, "\n");
+        fprintf(outputGrp.fpSpecial, "\n");
 }
 
-void Printer::PrintSpecialBody(FILE* fpOutput)
+/*  
+void Printer::PrintSpecial(void)
 {
-    int insertedLen = -1;
-    if (printIdx.pSplitEvent != NULL)
+    unsigned int numSp = libTable.GetNumSpecialRef();
+    unsigned int numSamples = libTable.GetNumSamples();
+
+    PrintSpecialHeader(fpOutput);
+    sampleMap.Init(numSamples);
+    sampleMap.SetSize(numSamples);
+
+    for (unsigned int i = 0; i != numSp; ++i)
     {
-        if (printIdx.pSplitEvent->pSpecialData->end >= 0 && printIdx.pSplitEvent->pSpecialData->pos >=0)
-            insertedLen = printIdx.pSplitEvent->pSpecialData->end - printIdx.pSplitEvent->pSpecialData->pos + 1;
+        unsigned int numEvents = pDetector->pSpecialEventsTable[i].Size();
+        const SpecialEvent* pRpSpecials = NULL;
+
+        if (numEvents > 0)
+            pRpSpecials = pDetector->pSpecialEventsTable[i].GetPointer(0);
+
+        const SplitEvent* pSplitSpecials = NULL;
+        unsigned int splitLen = 0;
+
+        if (pAligner != NULL)
+            pSplitSpecials = pAligner->GetSpecialStartFromZA(splitLen, i);
+
+        while (GetNextSpecial(pRpSpecials, pSplitSpecials))
+        {
+            InitFeatures();
+            SetSpecialFeatures(i);
+            PrintSpecialBody(fpOutput);
+
+            printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
+                    features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
+                    features.pos3[0], features.pos3[1], formatted.str().c_str());
+        }
+    }
+
+}
+*/
+
+void Printer::PrintSpecial(const PrintElmnt& element)
+{
+    InitFeatures();
+    SetSpecialFeatures(element);
+
+    int insertedLen = -1;
+    if (element.pSplitEvent != NULL)
+    {
+        if (element.pSplitEvent->pSpecialData->end >= 0 && element.pSplitEvent->pSpecialData->pos >=0)
+            insertedLen = element.pSplitEvent->pSpecialData->end - element.pSplitEvent->pSpecialData->pos + 1;
     }
 
     int splitFrag = features.splitFrag[0] + features.splitFrag[1];
@@ -246,7 +417,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
         formatted << "CIPOS=" << ciPos1 << "," << ciPos2 << ";";
     }
 
-    if (fpOutput == NULL)
+    if (outputGrp.fpSpecial == NULL)
     {
         printf("chr%s\t"
                "%d\t"
@@ -266,7 +437,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
     }
     else
     {
-        fprintf(fpOutput, "chr%s\t"
+        fprintf(outputGrp.fpSpecial, "chr%s\t"
                "%d\t"
                ".\t"
                "%c\t"
@@ -288,7 +459,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
 
     formatted << "FRAG=" << features.rpFrag[0] << "," << features.rpFrag[1] << "," << features.splitFrag[0] << "," << features.splitFrag[1] << ";";
 
-    if (fpOutput == NULL)
+    if (outputGrp.fpSpecial == NULL)
     {
         printf("%sSTRAND=%c;MEILEN=%d\t"
                "GT:AD",
@@ -299,7 +470,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
     }
     else
     {
-        fprintf(fpOutput, "%sSTRAND=%c;MEILEN=%d\t"
+        fprintf(outputGrp.fpSpecial, "%sSTRAND=%c;MEILEN=%d\t"
                "GT:AD",
                formatted.str().c_str(),
                features.strand,
@@ -307,6 +478,7 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
               );
     }
 
+    /*
     unsigned int numSamples = libTable.GetNumSamples();
     char buff[4];
     buff[1] = '/';
@@ -330,168 +502,29 @@ void Printer::PrintSpecialBody(FILE* fpOutput)
         else
             fprintf(fpOutput, "\t%s:%d", buff, sampleMap[i]);
     }
+    */
 
-    if (fpOutput == NULL)
+    if (outputGrp.fpSpecial == NULL)
         printf("\n");
     else
-        fprintf(fpOutput, "\n");
+        fprintf(outputGrp.fpSpecial, "\n");
 }
 
-bool Printer::GetNextSpecial(const SpecialEvent* pRpSpecials, const SplitEvent* pSplitSpecials)
+void Printer::SetSpecialFeatures(const PrintElmnt& element)
 {
-    if (printIdx.rpIdx == printIdx.rpSize)
-        printIdx.pRpSpecial = NULL;
-    else
-        printIdx.pRpSpecial = pRpSpecials + printIdx.rpIdx;
+    if (element.pSplitEvent != NULL)
+        SetSpecialFeaturesFromSplit(*(element.pSplitEvent));
 
-    if (printIdx.pRpSpecial != NULL)
-    {
-        printIdx.pRpSpecial = NULL;
-        while (printIdx.rpIdx < printIdx.rpSize)
-        {
-            if (pRpSpecials[printIdx.rpIdx].splitIdx >= 0)
-                ++(printIdx.rpIdx);
-            else
-            {
-                printIdx.pRpSpecial = pRpSpecials + printIdx.rpIdx;
-                break;
-            }
-        }
-    }
-
-    if (printIdx.splitIdx == printIdx.splitSize)
-        printIdx.pSplitEvent = NULL;
-    else
-        printIdx.pSplitEvent = pSplitSpecials + printIdx.splitIdx;
-
-    if (printIdx.pRpSpecial == NULL && printIdx.pSplitEvent == NULL)
-        return false;
-    if (printIdx.pRpSpecial != NULL && printIdx.pSplitEvent != NULL)
-    {
-        if (printIdx.pRpSpecial->pos <= (unsigned int) printIdx.pSplitEvent->pos)
-            printIdx.pSplitEvent = NULL;
-        else
-            printIdx.pRpSpecial = NULL;
-    }
-
-    if (printIdx.pRpSpecial != NULL)
-        ++(printIdx.rpIdx);
-
-    if (printIdx.pSplitEvent != NULL)
-    {
-        int rpIdx = printIdx.pSplitEvent->rpIdx;
-        if (rpIdx >= 0)
-        {
-            printIdx.pRpSpecial = pRpSpecials + rpIdx;
-        }
-
-        ++(printIdx.splitIdx);
-    }
-
-    return true;
-}
-
-void Printer::SetSampleInfoRpSpecial(const SpecialEvent& rpSpecial)
-{
-    for (unsigned int k = 0; k != rpSpecial.numFrag[0]; ++k)
-    {
-        const SpecialPair& specialPair = bamPairTable.specialPairs[rpSpecial.origIndex[0][k]];
-        unsigned int readGrpID = specialPair.readGrpID;
-        unsigned int sampleID = 0;
-
-        if (libTable.GetSampleID(sampleID, readGrpID))
-            ++sampleMap[sampleID];
-    }
-
-    for (unsigned int k = 0; k != rpSpecial.numFrag[1]; ++k)
-    {
-        const SpecialPair& specialPair = bamPairTable.specialPairs[rpSpecial.origIndex[1][k]];
-        unsigned int readGrpID = specialPair.readGrpID;
-        unsigned int sampleID = 0;
-
-        if (libTable.GetSampleID(sampleID, readGrpID))
-            ++sampleMap[sampleID];
-    }
-}
-
-void Printer::SetSampleInfoSplit(const SplitEvent& splitEvent)
-{
-    for (unsigned int i = 0; i != splitEvent.size3; ++i)
-    {
-        if (splitEvent.first3[i].isMajor)
-        {
-            unsigned int readGrpID = 0;
-            unsigned int sampleID = 0;
-            unsigned int origIdx = splitEvent.first3[i].origIdx;
-
-            if (splitEvent.first3[i].isSoft)
-                readGrpID = bamPairTable.softPairs[origIdx].readGrpID;
-            else
-                readGrpID = bamPairTable.orphanPairs[origIdx].readGrpID;
-
-            if (libTable.GetSampleID(sampleID, readGrpID))
-                ++sampleMap[sampleID];
-
-            ++(features.splitFrag[0]);
-        }
-    }
-
-    for (unsigned int i = 0; i != splitEvent.size5; ++i)
-    {
-        if (splitEvent.first5[i].isMajor)
-        {
-            unsigned int readGrpID = 0;
-            unsigned int sampleID = 0;
-            unsigned int origIdx = splitEvent.first5[i].origIdx;
-
-            if (splitEvent.first5[i].isSoft)
-                readGrpID = bamPairTable.softPairs[origIdx].readGrpID;
-            else
-                readGrpID = bamPairTable.orphanPairs[origIdx].readGrpID;
-
-            if (libTable.GetSampleID(sampleID, readGrpID))
-                ++sampleMap[sampleID];
-
-            ++(features.splitFrag[1]);
-        }
-    }
-}
-
-/*
-void Printer::SetSampleString(void)
-{
-    const Array<char*>& sampleNames = libTable.GetSampleNames();
-
-    formatted.clear();
-    formatted.str("");
-
-    for (std::map<unsigned int, unsigned int>::const_iterator itor = sampleMap.begin(); itor != sampleMap.end(); ++itor)
-    {
-        unsigned int sampleID = itor->first;
-        const char* name = sampleNames[sampleID];
-        formatted << name << "_" << itor->second << "_";
-    }
-}
-*/
-
-void Printer::SetSpecialFeatures(unsigned int zaSpRefID)
-{
-    if (printIdx.pSplitEvent != NULL)
-    {
-        const SplitEvent& splitEvent = *(printIdx.pSplitEvent);
-        SetSpecialFeaturesFromSplit(splitEvent);
-    }
-
-    if (printIdx.pRpSpecial != NULL)
-    {
-        const SpecialEvent& rpSpecial = *(printIdx.pRpSpecial);
-        SetSpecialFeaturesFromRp(rpSpecial, zaSpRefID);
-    }
+    if (element.pRpSpecial != NULL)
+        SetSpecialFeaturesFromRp(*(element.pRpSpecial));
 }
 
 void Printer::SetSpecialFeaturesFromSplit(const SplitEvent& splitEvent)
 {
     const Array<char*>* pSpecialRefs = libTable.GetSpecialRefNames();
+
+    features.splitFrag[0] = splitEvent.size3; 
+    features.splitFrag[1] = splitEvent.size5;
 
     features.pos = splitEvent.pos;
     features.len = splitEvent.len;
@@ -513,7 +546,7 @@ void Printer::SetSpecialFeaturesFromSplit(const SplitEvent& splitEvent)
     features.pos3[1] = splitEvent.pos3[1];
 }
 
-void Printer::SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial, unsigned int zaSpRefID)
+void Printer::SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial)
 {
     const Array<char*>& anchorNames = libTable.GetAnchorNames();
     const Array<char*>* pSpecialRefs = libTable.GetSpecialRefNames();
@@ -524,7 +557,7 @@ void Printer::SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial, unsigned i
     if (features.anchorName == NULL)
     {
         features.anchorName = anchorNames[rpSpecial.refID];
-        features.spRefName = (*pSpecialRefs)[zaSpRefID];
+        features.spRefName = (*pSpecialRefs)[rpSpecial.familyID];
         
         features.pos = rpSpecial.pos;
         features.len = rpSpecial.length;

@@ -53,7 +53,7 @@ namespace Tangram
         int32_t refID;
         uint32_t pos;
         uint32_t posUncertainty;
-        uint32_t length;
+        uint32_t length:16, familyID:16;
         uint32_t fragLenMax;
 
         int pos5[2];
@@ -178,7 +178,7 @@ namespace Tangram
 
             void DoSpecialMerge(SpecialEvent* pMergedEvent, const SpecialEvent* pHeadEvent, const SpecialEvent* pTailEvent);
 
-            void SetOrigIndices(Array<SpecialEvent>& specialEvents);
+            void SetOrigIndices(Array<SpecialEvent>& specialEvents, unsigned int spRefID);
 
         public:
 

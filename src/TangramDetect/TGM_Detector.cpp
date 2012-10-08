@@ -480,7 +480,7 @@ void Detector::CallSpecial(void)
 
         MakeSpecialEvents(pSpecialEventsTable[spRefID]);
         MergeSpecialEvents(pSpecialEventsTable[spRefID]);
-        SetOrigIndices(pSpecialEventsTable[spRefID]);
+        SetOrigIndices(pSpecialEventsTable[spRefID], spRefID);
     }
 }
 
@@ -747,7 +747,7 @@ void Detector::DoSpecialMerge(SpecialEvent* pMergedEvent, const SpecialEvent* pH
     pMergedEvent->posUncertainty = DoubleRoundToInt((double) (pMergedEvent->pos5[1] - pMergedEvent->pos5[0]) / numFrag5);
 }
 
-void Detector::SetOrigIndices(Array<SpecialEvent>& specialEvents)
+void Detector::SetOrigIndices(Array<SpecialEvent>& specialEvents, unsigned int spRefID)
 {
     SpecialEvent* pSpecialEvent = NULL;
 
@@ -756,6 +756,7 @@ void Detector::SetOrigIndices(Array<SpecialEvent>& specialEvents)
     for (unsigned int i = 0; i != size; ++i)
     {
         pSpecialEvent = specialEvents.GetPointer(i);
+        pSpecialEvent->familyID = spRefID;
         pSpecialEvent->sense = 0.0;
         pSpecialEvent->splitIdx = -1;
 

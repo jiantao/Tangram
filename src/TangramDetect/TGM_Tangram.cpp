@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     // load the command line arguments
     DetectPars detectPars;
     AlignerPars alignerPars;
-    Parameters parameters(detectPars, alignerPars);
+    GenotypePars genotypePars;
+    Parameters parameters(detectPars, alignerPars, genotypePars);
     parameters.Set((const char**) argv, argc);
 
     // load the input bam file names
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
 
     // print out the events (vcf format)
     Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable);
+    printer.Init();
     printer.Print();
 
     // clean up and quit

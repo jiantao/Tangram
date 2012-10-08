@@ -271,6 +271,8 @@ namespace Tangram
             // update the bam pair table with the incoming alignment
             void Update(const BamTools::BamAlignment& alignment);
 
+            PairType CheckPairType(int32_t& readGrpID, const BamTools::BamAlignment& alignment);
+
         private:
 
             // basic filter of bam alignment

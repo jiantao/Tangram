@@ -73,8 +73,6 @@ using namespace BamTools;
 
 #define DEFAULT_MIN_SOFT_SIZE 10
 
-#define DEFAULT_MIN_MQ 20
-
 #define DEFAULT_SPECIAL_MIN_MQ 20
 
 #define DEFAULT_DETECT_SET 0xffffffff
@@ -87,7 +85,6 @@ using namespace BamTools;
 
 DetectPars::DetectPars()
 {
-
     fpLibInput = NULL;
 
     fpHistInput = NULL;
@@ -135,8 +132,8 @@ void DetectPars::Clean(void)
 
 
 
-Parameters::Parameters(DetectPars& dPars, AlignerPars& aPars)
-                : detectPars(dPars), alignerPars(aPars)
+Parameters::Parameters(DetectPars& dPars, AlignerPars& aPars, GenotypePars& genotypePars)
+                : detectPars(dPars), alignerPars(aPars), genotypePars(genotypePars)
 {
 
 }
@@ -261,6 +258,7 @@ void Parameters::Set(const char** argv, int argc)
                         TGM_ErrQuit("ERROR: %s is an invalid minimum mapping quality.\n", opts[i].value);
 
                     detectPars.minMQ = tempMQ;
+                    genotypePars.minMQ = tempMQ;
                 }
 
                 break;

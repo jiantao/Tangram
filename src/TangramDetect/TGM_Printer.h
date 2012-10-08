@@ -19,6 +19,8 @@
 #ifndef  TGM_PRINTER_H
 #define  TGM_PRINTER_H
 
+#include <set>
+
 #include "TGM_LibTable.h"
 #include "TGM_BamPair.h"
 #include "TGM_Detector.h"
@@ -27,7 +29,9 @@
 
 namespace Tangram
 {
-    struct PrintIdx
+    const static unsigned int PRINT_BUFF_SIZE = 1000;
+
+    struct PrintElmnt
     {
         union
         {
@@ -36,13 +40,45 @@ namespace Tangram
 
         const SplitEvent* pSplitEvent;
 
-        unsigned int rpIdx;
+        int32_t pos;
 
-        unsigned int splitIdx;
+        int16_t subsetIdx;
 
-        unsigned int rpSize;
+        SV_EventType svType;
 
-        unsigned int splitSize;
+        bool operator< (const PrintElmnt& element) const
+        {
+            return pos < element.pos;
+        }
+    };
+
+    struct PrintSubset
+    {
+        union
+        {
+            const SpecialEvent* pRpSpecials;
+        };
+
+        const SplitEvent* pSplitEvents;
+
+        int32_t rpIdx;
+
+        int32_t srIdx;
+
+        int32_t rpSize;
+
+        int32_t srSize;
+
+        SV_EventType svType;
+    };
+
+    struct OutputGroup
+    {
+        FILE* fpDel;
+
+        FILE* fpSpecial;
+
+        FILE* fpInv;
     };
 
     struct PrintFeatures
@@ -76,15 +112,18 @@ namespace Tangram
 
             ~Printer();
 
+            void Init();
+
             void Print();
 
         private:
 
-            void PrintSpecial(void);
-
-            void PrintSpecialHeader(FILE* fpOutput);
-
-            void PrintSpecialBody(FILE* fpOutput);
+            inline void InitOutputGrp(void)
+            {
+                outputGrp.fpDel = NULL;
+                outputGrp.fpInv = NULL;
+                outputGrp.fpSpecial = NULL;
+            }
 
             inline void InitFeatures(void)
             {
@@ -103,6 +142,39 @@ namespace Tangram
                 features.splitFrag[1] = 0;
             };
 
+            void InitPrintSubset(void);
+
+            void InitPrintElmnts(void);
+
+            void PrintHeader(void);
+
+            void PrintDelHeader(void);
+
+            void PrintDupHeader(void);
+
+            void PrintInvHeader(void);
+
+            void PrintSpecialHeader(void);
+
+            void PrintTransHeader(void);
+
+            inline void CloseOutputGrp(void)
+            {
+                if (outputGrp.fpDel != NULL)
+                    fclose(outputGrp.fpDel);
+
+                if (outputGrp.fpInv != NULL)
+                    fclose(outputGrp.fpInv);
+
+                if (outputGrp.fpSpecial != NULL)
+                    fclose(outputGrp.fpSpecial);
+            }
+
+            // void PrintSpecial(void);
+
+            void PrintSpecial(const PrintElmnt& element);
+
+            /*  
             inline void InitPrintIdx(unsigned int rpSize, unsigned int splitSize)
             {
                 printIdx.pRpSpecial = NULL;
@@ -114,8 +186,11 @@ namespace Tangram
                 printIdx.rpSize = rpSize;
                 printIdx.splitSize = splitSize;
             }
+            */
 
-            bool GetNextSpecial(const SpecialEvent* pRpSpecials, const SplitEvent* pSplitSpecials);
+            bool GetNextPrintElmnt(PrintElmnt& element, int subsetIdx);
+
+            bool GetNextSpecial(PrintElmnt& element, int subsetIdx);
 
             void SetSampleInfoRpSpecial(const SpecialEvent& rpSpecial);
 
@@ -123,23 +198,27 @@ namespace Tangram
 
             // void SetSampleString(void);
 
-            void SetSpecialFeatures(unsigned int zaSpRefID);
+            void SetSpecialFeatures(const PrintElmnt& element);
 
             void SetSpecialFeaturesFromSplit(const SplitEvent& splitEvent);
 
-            void SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial, unsigned int zaSpRefID);
+            void SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial);
 
             bool SpecialPrintFilter(void);
 
         private:
 
-            PrintIdx printIdx;
+            OutputGroup outputGrp;
 
             PrintFeatures features;
 
             // std::map<unsigned int, unsigned int> sampleMap;
             
-            Array<unsigned int> sampleMap;
+            std::multiset<PrintElmnt> printElmnts;
+
+            Array<PrintSubset> printSubset;
+            
+            // Array<unsigned int> sampleMap;
             
             std::ostringstream formatted;
 
