@@ -18,21 +18,23 @@
 
 #include <time.h>
 #include <string>
+#include <iomanip>
 #include "TGM_Printer.h"
 
 using namespace std;
 using namespace Tangram;
 
 
-Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, const LibTable& libTable, const BamPairTable& bamPairTable)
-                : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable)
+Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, 
+                 const LibTable& libTable, const BamPairTable& bamPairTable, Genotype& genotype)
+                : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable), genotype(genotype)
 {
 
 }
 
 Printer::~Printer()
 {
-
+    CloseOutputGrp();
 }
 
 void Printer::Init(void)
@@ -50,14 +52,17 @@ void Printer::Print(void)
 
     PrintElmnt element;
     PrintElmnt temp;
+
     while (printElmnts.size() > 0)
     {
         element = *(printElmnts.begin());
-
+        bool hasGenotype = false;
         switch(element.svType)
         {
             case SV_SPECIAL:
                 PrintSpecial(element);
+                hasGenotype = genotype.Special(element.pRpSpecial, element.pSplitEvent);
+                PrintGenotype(genotype, hasGenotype);
                 break;
             case SV_INVERSION:
                 break;
@@ -318,6 +323,7 @@ void Printer::PrintSpecialHeader(void)
                "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
                "5' split fragments and 3' split fragments\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
+               "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
                "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
                buf);
 
@@ -462,7 +468,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     if (outputGrp.fpSpecial == NULL)
     {
         printf("%sSTRAND=%c;MEILEN=%d\t"
-               "GT:AD",
+               "GT:GL",
                formatted.str().c_str(),
                features.strand,
                insertedLen
@@ -471,11 +477,11 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     else
     {
         fprintf(outputGrp.fpSpecial, "%sSTRAND=%c;MEILEN=%d\t"
-               "GT:AD",
-               formatted.str().c_str(),
-               features.strand,
-               insertedLen
-              );
+                "GT:GL",
+                formatted.str().c_str(),
+                features.strand,
+                insertedLen
+               );
     }
 
     /*
@@ -502,12 +508,12 @@ void Printer::PrintSpecial(const PrintElmnt& element)
         else
             fprintf(fpOutput, "\t%s:%d", buff, sampleMap[i]);
     }
-    */
 
     if (outputGrp.fpSpecial == NULL)
         printf("\n");
     else
         fprintf(outputGrp.fpSpecial, "\n");
+    */
 }
 
 void Printer::SetSpecialFeatures(const PrintElmnt& element)
@@ -568,4 +574,55 @@ void Printer::SetSpecialFeaturesFromRp(const SpecialEvent& rpSpecial)
         features.pos3[0] = rpSpecial.pos3[0];
         features.pos3[1] = rpSpecial.pos3[1];
     }
+}
+
+void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
+{
+    formatted.clear();
+    formatted.str("");
+
+    if (hasGenotype)
+    {
+        unsigned int size = genotype.genotypes.size();
+        for (unsigned int i = 0; i != size; ++i)
+        {
+            switch(genotype.genotypes[i])
+            {
+                case -1:
+                    formatted << "\t.:";
+                    break;
+                case 0:
+                    formatted << "\t0/0:";
+                    break;
+                case 1:
+                    formatted << "\t0/1:";
+                    break;
+                case 2:
+                    formatted << "\t1/1:";
+                    break;
+                default:
+                    break;
+            }
+
+            unsigned int idx = 3 * i;
+            formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx] << ",";
+            formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 1] << ",";
+            formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 2];
+        }
+    }
+    else
+    {
+        const Array<char*>& sampleNames = libTable.GetSampleNames();
+
+        unsigned int numSamples = sampleNames.Size();
+        for (unsigned int i = 0; i != numSamples; ++i)
+        {
+            formatted << "\t.:.";
+        }
+    }
+
+    if (outputGrp.fpSpecial == NULL)
+        printf("%s\n", formatted.str().c_str());
+    else
+        fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
 }

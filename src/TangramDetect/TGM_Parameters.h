@@ -212,6 +212,8 @@ namespace Tangram
 
         int32_t minJumpLen;
 
+        double p[3];  // parameters for calculating the binomial pdf
+
         GenotypePars()
         {
             minMQ = DEFAULT_MIN_MQ;
@@ -223,6 +225,10 @@ namespace Tangram
             minCrossLen = DEFAULT_MIN_ALIGNED_LEN;
 
             minJumpLen = DEFAULT_MIN_JUMP_LEN;
+
+            p[0] = 0.99;
+            p[1] = 0.5;
+            p[2] = 0.01;
         }
     };
 

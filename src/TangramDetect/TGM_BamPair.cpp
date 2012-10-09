@@ -579,12 +579,38 @@ PairType BamPairTable::GetPairType(bool isUpMate)
 
     if (type1 == PT_NORMAL || type2 == PT_NORMAL)
     {
+        // check the soft pair first
+        int upSoftSize = pairStat.softSize[0][0] + pairStat.softSize[0][1];
+        int downSoftSize = pairStat.softSize[1][0] + pairStat.softSize[1][1];
+
+        if ( upSoftSize >= detectPars.minSoftSize && downSoftSize >= detectPars.minSoftSize)
+        {
+            return PT_UNKNOWN;
+        }
+        else if (upSoftSize < detectPars.minSoftSize && downSoftSize < detectPars.minSoftSize)
+        {
+            // nothing to do here
+        }
+        else 
+        {
+            // we need to skip the anchor mate in a soft pair
+            if ((isUpMate && downSoftSize >= detectPars.minSoftSize) || (!isUpMate && upSoftSize >= detectPars.minSoftSize))
+                return PT_UNKNOWN;
+
+            if (pairStat.softSize[0][0] >= detectPars.minSoftSize || pairStat.softSize[1][0] >= detectPars.minSoftSize)
+                return PT_SOFT3;
+            else if (pairStat.softSize[0][1] >= detectPars.minSoftSize || pairStat.softSize[1][1] >= detectPars.minSoftSize)
+                return PT_SOFT5;
+        }
+
         if (pairStat.fragLen > fragLenHigh)
             return PT_LONG;
         else if (pairStat.fragLen < fragLenLow)
             return PT_SHORT;
         else
         {
+            return PT_NORMAL;
+            /*  
             int upSoftSize = pairStat.softSize[0][0] + pairStat.softSize[0][1];
             int downSoftSize = pairStat.softSize[1][0] + pairStat.softSize[1][1];
 
@@ -609,6 +635,7 @@ PairType BamPairTable::GetPairType(bool isUpMate)
                 else
                     return PT_UNKNOWN;
             }
+            */
         }
     }
     else if ((type1 == PT_UNKNOWN && type2 == PT_UNKNOWN) || (type1 != PT_UNKNOWN && type2 != PT_UNKNOWN))

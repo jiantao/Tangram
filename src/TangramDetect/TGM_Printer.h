@@ -26,6 +26,7 @@
 #include "TGM_Detector.h"
 #include "TGM_Aligner.h"
 #include "TGM_Reference.h"
+#include "TGM_Genotype.h"
 
 namespace Tangram
 {
@@ -108,7 +109,7 @@ namespace Tangram
     {
         public:
             Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, 
-                    const LibTable& libTable, const BamPairTable& bamPairTable);
+                    const LibTable& libTable, const BamPairTable& bamPairTable, Genotype& genotype);
 
             ~Printer();
 
@@ -174,6 +175,8 @@ namespace Tangram
 
             void PrintSpecial(const PrintElmnt& element);
 
+            void PrintGenotype(const Genotype& genotype, bool hasGenotype);
+
             /*  
             inline void InitPrintIdx(unsigned int rpSize, unsigned int splitSize)
             {
@@ -233,6 +236,8 @@ namespace Tangram
             const LibTable& libTable;
 
             const BamPairTable& bamPairTable;
+
+            Genotype& genotype;
     };
 };
 

@@ -27,6 +27,7 @@
 #include "TGM_Reference.h"
 #include "TGM_Aligner.h"
 #include "TGM_Printer.h"
+#include "TGM_Genotype.h"
 
 #include "api/BamMultiReader.h"
 
@@ -109,7 +110,10 @@ int main(int argc, char *argv[])
     }
 
     // print out the events (vcf format)
-    Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable);
+    Genotype genotype(bamMultiReader, genotypePars, libTable, bamPairTable);
+    genotype.Init();
+
+    Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable, genotype);
     printer.Init();
     printer.Print();
 
