@@ -28,6 +28,7 @@
 
 namespace Tangram
 {
+    // fragment count for each sample
     struct FragCount
     {
         uint32_t nonSupport;
@@ -47,6 +48,7 @@ namespace Tangram
 
             void SetSpecialPrior(const double* prior);
 
+            // do the genotype for a special insertion locus
             bool Special(const SpecialEvent* pRpSepcial, const SplitEvent* pSplitEvent);
 
         private:
@@ -55,8 +57,10 @@ namespace Tangram
 
             bool Jump(int32_t refID, int32_t pos);
 
+            // set the read-pair fragment count for each sample
             void SetSampleCountSpecial(const SpecialEvent& rpSpecial);
 
+            // set the split-read fragment count for each sample
             void SetSampleCountSplit(const SplitEvent& splitEvent);
 
             inline void UpdateNonSupport(int32_t readGrpID)
@@ -75,15 +79,19 @@ namespace Tangram
 
             void SetLikelihood(void);
 
+            // assume diploid genome.
+            // binomial pdf
             long double CalculateLikelihood(unsigned int refCount, unsigned int altCount, double p) const;
-
 
         public:
 
+            // genotype vector
             std::vector<int8_t> genotypes;
 
+            // likelihood vector (3 elements for one sample)
             std::vector<double> likelihoods;
 
+            // fragment count vector
             Array<FragCount> sampleCount;
 
         private:
@@ -96,10 +104,9 @@ namespace Tangram
 
             BamPairTable& bamPairTable;
 
+            // used to keep track of the current stream position
             int32_t lastChr;
-
             int32_t lastPos;
-
             int32_t lastEnd;
 
             double specialPrior[3];

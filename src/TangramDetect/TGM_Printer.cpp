@@ -192,6 +192,7 @@ bool Printer::GetNextSpecial(PrintElmnt& element, int subsetIdx)
 {
     PrintSubset& subset = printSubset[subsetIdx];
 
+    // find the first read-pair event that is not merged with any split-read event
     element.pRpSpecial = NULL;
     while (subset.rpIdx < subset.rpSize)
     {
@@ -284,12 +285,14 @@ void Printer::PrintHeader(void)
 
 void Printer::PrintSpecialHeader(void)
 {
+    // get the current time
     time_t     now = time(0);
     struct tm  tstruct;
     char       buf[80];
     tstruct = *localtime(&now);
     strftime(buf, sizeof(buf), "%Y%m%d", &tstruct);
 
+    // output to the standard input
     if (outputGrp.fpSpecial == NULL)
     {
         printf("##fileformat=VCFv4.1\n"
@@ -306,12 +309,13 @@ void Printer::PrintSpecialHeader(void)
                "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
                "5' split fragments and 3' split fragments\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
+               "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
                "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
                buf);
 
         printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
     }
-    else
+    else // output to a file
     {
         fprintf(outputGrp.fpSpecial, 
                "##fileformat=VCFv4.1\n"
@@ -335,6 +339,7 @@ void Printer::PrintSpecialHeader(void)
         fprintf(outputGrp.fpSpecial, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
     }
 
+    // print ou the sample names
     const Array<char*>& sampleNames = libTable.GetSampleNames();
 
     unsigned int numSamples = sampleNames.Size();
@@ -352,45 +357,6 @@ void Printer::PrintSpecialHeader(void)
     else
         fprintf(outputGrp.fpSpecial, "\n");
 }
-
-/*  
-void Printer::PrintSpecial(void)
-{
-    unsigned int numSp = libTable.GetNumSpecialRef();
-    unsigned int numSamples = libTable.GetNumSamples();
-
-    PrintSpecialHeader(fpOutput);
-    sampleMap.Init(numSamples);
-    sampleMap.SetSize(numSamples);
-
-    for (unsigned int i = 0; i != numSp; ++i)
-    {
-        unsigned int numEvents = pDetector->pSpecialEventsTable[i].Size();
-        const SpecialEvent* pRpSpecials = NULL;
-
-        if (numEvents > 0)
-            pRpSpecials = pDetector->pSpecialEventsTable[i].GetPointer(0);
-
-        const SplitEvent* pSplitSpecials = NULL;
-        unsigned int splitLen = 0;
-
-        if (pAligner != NULL)
-            pSplitSpecials = pAligner->GetSpecialStartFromZA(splitLen, i);
-
-        while (GetNextSpecial(pRpSpecials, pSplitSpecials))
-        {
-            InitFeatures();
-            SetSpecialFeatures(i);
-            PrintSpecialBody(fpOutput);
-
-            printf("chr%s\t%d\t%d\t%c\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%s\n", features.anchorName, features.pos, features.pos + features.len + 1, features.strand, 
-                    features.rpFrag[0], features.rpFrag[1], features.splitFrag[0], features.splitFrag[1], features.spRefName, features.pos5[0], features.pos5[1], 
-                    features.pos3[0], features.pos3[1], formatted.str().c_str());
-        }
-    }
-
-}
-*/
 
 void Printer::PrintSpecial(const PrintElmnt& element)
 {
@@ -486,37 +452,6 @@ void Printer::PrintSpecial(const PrintElmnt& element)
                 insertedLen
                );
     }
-
-    /*
-    unsigned int numSamples = libTable.GetNumSamples();
-    char buff[4];
-    buff[1] = '/';
-    buff[3] = '\0';
-
-    for (unsigned int i = 0; i != numSamples; ++i)
-    {
-        if (sampleMap[i] > 0)
-        {
-            buff[0] = '1';
-            buff[2] = '.';
-        }
-        else
-        {
-            buff[0] = '0';
-            buff[2] = '0';
-        }
-
-        if (fpOutput == NULL)
-            printf("\t%s:%d", buff, sampleMap[i]);
-        else
-            fprintf(fpOutput, "\t%s:%d", buff, sampleMap[i]);
-    }
-
-    if (outputGrp.fpSpecial == NULL)
-        printf("\n");
-    else
-        fprintf(outputGrp.fpSpecial, "\n");
-    */
 }
 
 void Printer::SetSpecialFeatures(const PrintElmnt& element)

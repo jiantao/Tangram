@@ -78,13 +78,16 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
         SetSampleCountSplit(*pSplitEvent);
     }
 
+    // do the genotyping
     if (genotypePars.doGenotype)
     {
+        // if there are not enough supporting fragments for this locus
+        // we will skip it to save time (these loci will probably filtered anyway)
         if (!SpecialFilter(pRpSpecial, pSplitEvent))
             return false;
 
+        // where should we jump to 
         int32_t fragLenMax = libTable.GetFragLenMax();
-
         int32_t jumpPos = pos - fragLenMax;
         if (jumpPos < 0)
             jumpPos = 0;
@@ -101,6 +104,7 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
             posLower += pRpSpecial->posUncertainty / 2;
         }
 
+        // counting the non-support fragments
         BamAlignment alignment;
         while (reader.GetNextAlignment(alignment))
         {
@@ -142,6 +146,7 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
                 }
             }
 
+            // only count the upper mate to prevent double counting
             if (isUpperMate)
             {
                 if (pairType == PT_NORMAL && alignEnd <= posUpper && alignment.MatePosition >= posLower)
@@ -151,6 +156,7 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
             }
         }
 
+        // set the likelihood for this locus
         SetLikelihood();
 
         // update the bam file stream position
@@ -188,6 +194,7 @@ bool Genotype::Jump(int32_t refID, int32_t pos)
 {
     if (refID != lastChr || pos >= lastEnd + genotypePars.minJumpLen || pos < lastEnd)
     {
+        // we only do the jump when the next locus is very far away
         if (reader.Jump(refID, pos))
             return true;
         else
@@ -195,6 +202,8 @@ bool Genotype::Jump(int32_t refID, int32_t pos)
     }
     else
     {
+        // if the next locus is close we just read through the bam file
+        // until we reach that position
         BamAlignment alignment;
         while (reader.GetNextAlignment(alignment))
         {
@@ -290,6 +299,7 @@ void Genotype::SetLikelihood(void)
                 long double likelihood = CalculateLikelihood(refCount, altCount, genotypePars.p[j]);
                 likelihoods.push_back(log10(likelihood));
 
+                // assign the genotyp with the highest data likelihood
                 if (likelihood > maxLikelihood)
                 {
                     maxLikelihood = likelihood;

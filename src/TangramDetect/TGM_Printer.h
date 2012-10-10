@@ -30,8 +30,6 @@
 
 namespace Tangram
 {
-    const static unsigned int PRINT_BUFF_SIZE = 1000;
-
     struct PrintElmnt
     {
         union
@@ -171,27 +169,11 @@ namespace Tangram
                     fclose(outputGrp.fpSpecial);
             }
 
-            // void PrintSpecial(void);
-
             void PrintSpecial(const PrintElmnt& element);
 
             void PrintGenotype(const Genotype& genotype, bool hasGenotype);
 
             void PrintSampleInfo(const Genotype& genotype);
-
-            /*  
-            inline void InitPrintIdx(unsigned int rpSize, unsigned int splitSize)
-            {
-                printIdx.pRpSpecial = NULL;
-                printIdx.pSplitEvent = NULL;
-
-                printIdx.rpIdx = 0;
-                printIdx.splitIdx = 0;
-
-                printIdx.rpSize = rpSize;
-                printIdx.splitSize = splitSize;
-            }
-            */
 
             bool GetNextPrintElmnt(PrintElmnt& element, int subsetIdx);
 
@@ -200,8 +182,6 @@ namespace Tangram
             void SetSampleInfoRpSpecial(const SpecialEvent& rpSpecial);
 
             void SetSampleInfoSplit(const SplitEvent& splitEvent);
-
-            // void SetSampleString(void);
 
             void SetSpecialFeatures(const PrintElmnt& element);
 
@@ -217,13 +197,9 @@ namespace Tangram
 
             PrintFeatures features;
 
-            // std::map<unsigned int, unsigned int> sampleMap;
-            
             std::multiset<PrintElmnt> printElmnts;
 
             Array<PrintSubset> printSubset;
-            
-            // Array<unsigned int> sampleMap;
             
             std::ostringstream formatted;
 
