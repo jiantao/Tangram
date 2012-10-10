@@ -28,7 +28,7 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       17
+#define OPT_TOTAL_ARGS       18
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_REQUIRED_ARGS    3
@@ -62,13 +62,15 @@ using namespace BamTools;
 
 #define OPT_MIN_SCORE_RATE       12
 
-#define OPT_GT_RP_MIN_FRAG       13
+#define OPT_GENOTYPE             13
 
-#define OPT_GT_SR_MIN_FRAG       14
+#define OPT_GT_RP_MIN_FRAG       14
 
-#define OPT_THREAD_NUM           15
+#define OPT_GT_SR_MIN_FRAG       15
 
-#define OPT_OUTPUT               16
+#define OPT_THREAD_NUM           16
+
+#define OPT_OUTPUT               17
 
 
 #define DEFAULT_MIN_CLUSTER_SIZE 2
@@ -164,6 +166,7 @@ void Parameters::Set(const char** argv, int argc)
         {"smq",   NULL, FALSE},
         {"dt",  NULL, FALSE},
         {"msr",  NULL, FALSE},
+        {"gt",  NULL, FALSE},
         {"rpf",  NULL, FALSE},
         {"srf",  NULL, FALSE},
         {"p",  NULL, FALSE},
@@ -303,9 +306,24 @@ void Parameters::Set(const char** argv, int argc)
                     TGM_ErrQuit("ERROR: %s is an invalid minimum score rate. (0.0 - 1.0]\n", opts[i].value);
 
                 break;
+            case OPT_GENOTYPE:
+                if (opts[i].isFound)
+                {
+                    if (opts[i].value != NULL)
+                        TGM_ErrQuit("ERROR: -gt is a flag. No argument is needed.\n");
+
+                    genotypePars.doGenotype = true;
+                }
+
+                break;
             case OPT_GT_RP_MIN_FRAG:
                 if (opts[i].value != NULL)
+                {
+                    if (!genotypePars.doGenotype)
+                        TGM_ErrQuit("ERROR: Please turn on the genotype module (-gt).\n");
+
                     genotypePars.minRpFrag = atoi(opts[i].value);
+                }
 
                 if (genotypePars.minRpFrag < 0)
                     TGM_ErrQuit("ERROR: %s is an invalid minimum number of read-pair supporting fragments for genotype. [0 inf)\n", opts[i].value);
@@ -313,7 +331,12 @@ void Parameters::Set(const char** argv, int argc)
                 break;
             case OPT_GT_SR_MIN_FRAG:
                 if (opts[i].value != NULL)
+                {
+                    if (!genotypePars.doGenotype)
+                        TGM_ErrQuit("ERROR: Please turn on the genotype module (-gt).\n");
+
                     genotypePars.minSrFrag = atoi(opts[i].value);
+                }
 
                 if (genotypePars.minSrFrag < 0)
                     TGM_ErrQuit("ERROR: %s is an invalid minimum number of split-read supporting fragments for genotype. [0 inf)\n", opts[i].value);
@@ -451,8 +474,9 @@ void Parameters::ShowHelp(void) const
     printf("                     -smq  INT    minimum mapping quality for special pairs[20]\n");
     printf("                     -dt   INT    detection set [0xffffffff: report all types of SV]\n");
     printf("                     -msr  FLOAT  minimum score rate for split alignments[0.8]\n");
+    printf("                     -gt   FLAG   do genotyping for detected SV events[false]\n");
     printf("                     -rpf  INT    minimum number of supporting read-pair fragments for genotype[2]\n");
-    printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype[2]\n");
+    printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype[5]\n");
     printf("                     -p    INT    number of processors (threads)[1]\n");
     printf("                     -help        print this help message\n");
 

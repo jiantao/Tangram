@@ -109,7 +109,7 @@ namespace Tangram
     {
         public:
             Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, 
-                    const LibTable& libTable, const BamPairTable& bamPairTable, Genotype& genotype);
+                    const LibTable& libTable, const BamPairTable& bamPairTable, const GenotypePars& genotypePars, Genotype& genotype);
 
             ~Printer();
 
@@ -177,6 +177,8 @@ namespace Tangram
 
             void PrintGenotype(const Genotype& genotype, bool hasGenotype);
 
+            void PrintSampleInfo(const Genotype& genotype);
+
             /*  
             inline void InitPrintIdx(unsigned int rpSize, unsigned int splitSize)
             {
@@ -236,6 +238,8 @@ namespace Tangram
             const LibTable& libTable;
 
             const BamPairTable& bamPairTable;
+
+            const GenotypePars& genotypePars;
 
             Genotype& genotype;
     };

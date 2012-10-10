@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     Genotype genotype(bamMultiReader, genotypePars, libTable, bamPairTable);
     genotype.Init();
 
-    Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable, genotype);
+    Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable, genotypePars, genotype);
     printer.Init();
     printer.Print();
 

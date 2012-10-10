@@ -202,6 +202,8 @@ namespace Tangram
 
     struct GenotypePars
     {
+        bool doGenotype;
+
         unsigned char minMQ;
 
         int minCrossLen;
@@ -216,6 +218,8 @@ namespace Tangram
 
         GenotypePars()
         {
+            doGenotype = false;
+
             minMQ = DEFAULT_MIN_MQ;
 
             minRpFrag = DEFAULT_MIN_RP_FRAG;

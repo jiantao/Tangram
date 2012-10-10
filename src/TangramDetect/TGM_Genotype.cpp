@@ -56,9 +56,6 @@ void Genotype::SetSpecialPrior(const double* prior)
 
 bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitEvent)
 {
-    if (!SpecialFilter(pRpSpecial, pSplitEvent))
-        return false;
-
     // clear the fragment count
     sampleCount.MemSet(0);
 
@@ -81,80 +78,86 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
         SetSampleCountSplit(*pSplitEvent);
     }
 
-    int32_t fragLenMax = libTable.GetFragLenMax();
-
-    int32_t jumpPos = pos - fragLenMax;
-    if (jumpPos < 0)
-        jumpPos = 0;
-
-    if (!Jump(chr, jumpPos))
-        return false;
-
-    int32_t posUpper = pos;
-    int32_t posLower = pos;
-
-    if (!isPresice)
+    if (genotypePars.doGenotype)
     {
-        posUpper -= pRpSpecial->posUncertainty / 2;
-        posLower += pRpSpecial->posUncertainty / 2;
-    }
+        if (!SpecialFilter(pRpSpecial, pSplitEvent))
+            return false;
 
-    BamAlignment alignment;
-    while (reader.GetNextAlignment(alignment))
-    {
-        if (alignment.Position > pos + 100)
-            break;
+        int32_t fragLenMax = libTable.GetFragLenMax();
 
-        int32_t fragEnd = 0;
-        int32_t alignEnd = alignment.GetEndPosition(false, true);
+        int32_t jumpPos = pos - fragLenMax;
+        if (jumpPos < 0)
+            jumpPos = 0;
 
-        bool isUpperMate = false;
-        if (alignment.RefID != alignment.MateRefID)
-            continue;
-        else if (alignment.Position < alignment.MatePosition)
+        if (!Jump(chr, jumpPos))
+            return false;
+
+        int32_t posUpper = pos;
+        int32_t posLower = pos;
+
+        if (!isPresice)
         {
-            isUpperMate = true;
-            fragEnd = alignment.Position + alignment.InsertSize - 1;
+            posUpper -= pRpSpecial->posUncertainty / 2;
+            posLower += pRpSpecial->posUncertainty / 2;
         }
-        else
+
+        BamAlignment alignment;
+        while (reader.GetNextAlignment(alignment))
         {
-            fragEnd = alignEnd;
-            if (!isPresice)
+            if (alignment.Position > pos + 100)
+                break;
+
+            int32_t fragEnd = 0;
+            int32_t alignEnd = alignment.GetEndPosition(false, true);
+
+            bool isUpperMate = false;
+            if (alignment.RefID != alignment.MateRefID)
                 continue;
-        }
-
-        if (fragEnd < posUpper)
-            continue;
-
-        int32_t readGrpID = -1;
-        PairType pairType = bamPairTable.CheckPairType(readGrpID, alignment);
-
-        if (isPresice)
-        {
-            if (alignment.Position < pos && alignEnd > pos && alignment.MapQuality >= genotypePars.minMQ && pairType != PT_SOFT3 && pairType != PT_SOFT5)
+            else if (alignment.Position < alignment.MatePosition)
             {
-                int upLen = pos - alignment.Position + 1;
-                int downLen = alignEnd - pos + 1;
-                if (upLen > genotypePars.minCrossLen && downLen > genotypePars.minCrossLen)
+                isUpperMate = true;
+                fragEnd = alignment.Position + alignment.InsertSize - 1;
+            }
+            else
+            {
+                fragEnd = alignEnd;
+                if (!isPresice)
+                    continue;
+            }
+
+            if (fragEnd < posUpper)
+                continue;
+
+            int32_t readGrpID = -1;
+            PairType pairType = bamPairTable.CheckPairType(readGrpID, alignment);
+
+            if (isPresice)
+            {
+                if (alignment.Position < pos && alignEnd > pos && alignment.MapQuality >= genotypePars.minMQ && pairType != PT_SOFT3 && pairType != PT_SOFT5)
+                {
+                    int upLen = pos - alignment.Position + 1;
+                    int downLen = alignEnd - pos + 1;
+                    if (upLen > genotypePars.minCrossLen && downLen > genotypePars.minCrossLen)
+                        UpdateNonSupport(readGrpID);
+                }
+            }
+
+            if (isUpperMate)
+            {
+                if (pairType == PT_NORMAL && alignEnd <= posUpper && alignment.MatePosition >= posLower)
                     UpdateNonSupport(readGrpID);
+                else if (pairType == PT_SHORT && alignEnd <= posUpper && alignment.MatePosition >= posLower)
+                    UpdateSupport(readGrpID);
             }
         }
 
-        if (isUpperMate)
-        {
-            if (pairType == PT_NORMAL && alignEnd <= posUpper && alignment.MatePosition >= posLower)
-                UpdateNonSupport(readGrpID);
-            else if (pairType == PT_SHORT && alignEnd <= posUpper && alignment.MatePosition >= posLower)
-                UpdateSupport(readGrpID);
-        }
+        SetLikelihood();
+
+        // update the bam file stream position
+        lastChr = chr;
+        lastPos = jumpPos;
+        lastEnd = alignment.Position;
     }
-
-    SetLikelihood();
-
-    // update the bam file stream position
-    lastChr = chr;
-    lastPos = jumpPos;
-    lastEnd = alignment.Position;
 
     return true;
 }

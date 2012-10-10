@@ -26,8 +26,9 @@ using namespace Tangram;
 
 
 Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const Aligner* pAligner, const Reference* pRef, 
-                 const LibTable& libTable, const BamPairTable& bamPairTable, Genotype& genotype)
-                : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), bamPairTable(bamPairTable), genotype(genotype)
+                 const LibTable& libTable, const BamPairTable& bamPairTable, const GenotypePars& genotypePars, Genotype& genotype)
+                : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), 
+                  bamPairTable(bamPairTable), genotypePars(genotypePars), genotype(genotype)
 {
 
 }
@@ -62,7 +63,11 @@ void Printer::Print(void)
             case SV_SPECIAL:
                 PrintSpecial(element);
                 hasGenotype = genotype.Special(element.pRpSpecial, element.pSplitEvent);
-                PrintGenotype(genotype, hasGenotype);
+
+                if (genotypePars.doGenotype)
+                    PrintGenotype(genotype, hasGenotype);
+                else
+                    PrintSampleInfo(genotype);
                 break;
             case SV_INVERSION:
                 break;
@@ -467,8 +472,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("%sSTRAND=%c;MEILEN=%d\t"
-               "GT:GL",
+        printf("%sSTRAND=%c;MEILEN=%d",
                formatted.str().c_str(),
                features.strand,
                insertedLen
@@ -476,8 +480,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "%sSTRAND=%c;MEILEN=%d\t"
-                "GT:GL",
+        fprintf(outputGrp.fpSpecial, "%sSTRAND=%c;MEILEN=%d",
                 formatted.str().c_str(),
                 features.strand,
                 insertedLen
@@ -622,7 +625,36 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
     }
 
     if (outputGrp.fpSpecial == NULL)
+    {
+        printf("\tGT:GL");
         printf("%s\n", formatted.str().c_str());
+    }
     else
+    {
+        fprintf(outputGrp.fpSpecial, "\tGT:GL");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
+    }
+}
+
+void Printer::PrintSampleInfo(const Genotype& genotype)
+{
+    formatted.clear();
+    formatted.str("");
+
+    unsigned int size = genotype.sampleCount.Size();
+    for (unsigned int i = 0; i != size; ++i)
+    {
+        formatted << "\t./1:" << genotype.sampleCount[i].support;
+    }
+
+    if (outputGrp.fpSpecial == NULL)
+    {
+        printf("\tGT:AD");
+        printf("%s\n", formatted.str().c_str());
+    }
+    else
+    {
+        fprintf(outputGrp.fpSpecial, "\tGT:AD");
+        fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
+    }
 }

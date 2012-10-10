@@ -687,6 +687,11 @@ void BamPairTable::UpdateOrphanPair(void)
         if (!libTable.GetReadGrpID(readGrpID, readGrpName.c_str()))
             return;
 
+        // filter out those pairs whose libraries are not good
+        unsigned int fragLenMedian = libTable.GetFragLenMedian(pairStat.readGrpID);
+        if (fragLenMedian == 0)
+            return;
+
         bool isUpMate = false;
         if (pAlignment->GetTag("ZA", zaStr))
             ParseZAstr(isUpMate);

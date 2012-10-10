@@ -84,6 +84,8 @@ namespace Tangram
 
             std::vector<double> likelihoods;
 
+            Array<FragCount> sampleCount;
+
         private:
 
             BamTools::BamMultiReader& reader;
@@ -101,8 +103,6 @@ namespace Tangram
             int32_t lastEnd;
 
             double specialPrior[3];
-
-            Array<FragCount> sampleCount;
     };
 };
 
