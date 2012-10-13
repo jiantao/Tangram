@@ -192,7 +192,7 @@ bool Genotype::SpecialFilter(const SpecialEvent* pRpSpecial, const SplitEvent* p
 
 bool Genotype::Jump(int32_t refID, int32_t pos)
 {
-    if (refID != lastChr || pos >= lastEnd + genotypePars.minJumpLen || pos < lastEnd)
+    if (refID != lastChr || (genotypePars.minJumpLen > 0 && pos >= lastEnd + genotypePars.minJumpLen) || pos < lastEnd)
     {
         // we only do the jump when the next locus is very far away
         if (reader.Jump(refID, pos))

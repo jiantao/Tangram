@@ -579,7 +579,10 @@ void Printer::PrintSampleInfo(const Genotype& genotype)
     unsigned int size = genotype.sampleCount.Size();
     for (unsigned int i = 0; i != size; ++i)
     {
-        formatted << "\t./1:" << genotype.sampleCount[i].support;
+        if (genotype.sampleCount[i].support > 0)
+            formatted << "\t./1:" << genotype.sampleCount[i].support;
+        else
+            formatted << "\t0/0:" << genotype.sampleCount[i].support;
     }
 
     if (outputGrp.fpSpecial == NULL)
