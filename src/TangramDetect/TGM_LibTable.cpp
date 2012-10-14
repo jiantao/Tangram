@@ -296,11 +296,28 @@ void LibTable::ReadReadGrps(uint32_t sizeRG, FILE* fpLibInput)
 void LibTable::CheckReadGrps(int maxFragDiff)
 {
     unsigned int size = libInfo.Size();
+    int32_t newMaxFrag = 0;
     for (unsigned int i = 0; i != size; ++i)
     {
-        if (seqTech[i] == ST_ILLUMINA && libInfo[i].fragLenHigh - libInfo[i].fragLenLow > maxFragDiff)
-            libInfo[i].fragLenMedian = 0;
+        if (seqTech[i] == ST_ILLUMINA)
+        {
+            if (libInfo[i].fragLenHigh - libInfo[i].fragLenLow > maxFragDiff)
+            {
+                libInfo[i].fragLenMedian = 0;
+                libInfo[i].fragLenHigh = 0;
+            }
+            else
+            {
+                if (libInfo[i].fragLenHigh > newMaxFrag)
+                    newMaxFrag = libInfo[i].fragLenHigh;
+            }
+        }
     }
+
+    if (newMaxFrag == 0)
+        TGM_ErrQuit("ERROR: No valid read groups after filtering.\n");
+
+    fragLenMax = newMaxFrag;
 }
 
 void LibTable::ReadSpecialRef(uint32_t sizeSP, FILE* fpLibInput)
