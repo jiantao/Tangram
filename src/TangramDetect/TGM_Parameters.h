@@ -78,7 +78,7 @@ namespace Tangram
     
     static const int DEFAULT_THREAD_NUM = 1;
 
-    static const int32_t DEFAULT_MIN_JUMP_LEN = -1;
+    static const int32_t DEFAULT_MIN_JUMP_LEN = 500000;
 
     static const int DEFAULT_MIN_RP_FRAG = 2;
 

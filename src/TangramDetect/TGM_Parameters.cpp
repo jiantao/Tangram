@@ -28,7 +28,7 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       18
+#define OPT_TOTAL_ARGS       19
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_REQUIRED_ARGS    3
@@ -68,9 +68,11 @@ using namespace BamTools;
 
 #define OPT_GT_SR_MIN_FRAG       15
 
-#define OPT_THREAD_NUM           16
+#define OPT_MIN_JUMP_LEN         16
 
-#define OPT_OUTPUT               17
+#define OPT_THREAD_NUM           17
+
+#define OPT_OUTPUT               18
 
 
 #define DEFAULT_MIN_CLUSTER_SIZE 2
@@ -169,6 +171,7 @@ void Parameters::Set(const char** argv, int argc)
         {"gt",  NULL, FALSE},
         {"rpf",  NULL, FALSE},
         {"srf",  NULL, FALSE},
+        {"mjl",  NULL, FALSE},
         {"p",  NULL, FALSE},
         {"out",  NULL, FALSE},
         {NULL,   NULL, FALSE}
@@ -342,6 +345,16 @@ void Parameters::Set(const char** argv, int argc)
                     TGM_ErrQuit("ERROR: %s is an invalid minimum number of split-read supporting fragments for genotype. [0 inf)\n", opts[i].value);
 
                 break;
+            case OPT_MIN_JUMP_LEN:
+                if (opts[i].value != NULL)
+                {
+                    if (!genotypePars.doGenotype)
+                        TGM_ErrQuit("ERROR: Please turn on the genotype module (-gt).\n");
+
+                    genotypePars.minJumpLen = atoi(opts[i].value);
+                }
+
+                break;
             case OPT_THREAD_NUM:
                 if (opts[i].value != NULL)
                 {
@@ -477,6 +490,7 @@ void Parameters::ShowHelp(void) const
     printf("                     -gt   FLAG   do genotyping for detected SV events[false]\n");
     printf("                     -rpf  INT    minimum number of supporting read-pair fragments for genotype[2]\n");
     printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype[5]\n");
+    printf("                     -mjl  INT    minimum jumping (bam index jump) length for genotyping. Set to 0 to turn off the jump.[500000]\n");
     printf("                     -p    INT    number of processors (threads)[1]\n");
     printf("                     -help        print this help message\n");
 
