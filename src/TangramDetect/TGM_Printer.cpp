@@ -334,7 +334,8 @@ void Printer::PrintSpecialHeader(void)
                "5' split fragments and 3' split fragments\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
                "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
-               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
+               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n"
+               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n",
                buf);
 
         fprintf(outputGrp.fpSpecial, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
