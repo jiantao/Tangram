@@ -310,7 +310,8 @@ void Printer::PrintSpecialHeader(void)
                "5' split fragments and 3' split fragments\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
                "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
-               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n",
+               "##FORMAT=<ID=AD,Number=1,Type=Integer,Description=\"Allele Depth, how many reads support this allele\">\n"
+               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n",
                buf);
 
         printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
@@ -546,6 +547,8 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx] << ",";
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 1] << ",";
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 2];
+
+            formatted << ":" << genotype.sampleCount[i].nonSupport << "," << genotype.sampleCount[i].support;
         }
     }
     else
@@ -555,18 +558,18 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
         unsigned int numSamples = sampleNames.Size();
         for (unsigned int i = 0; i != numSamples; ++i)
         {
-            formatted << "\t.:.";
+            formatted << "\t.:.:.";
         }
     }
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("\tGT:GL");
+        printf("\tGT:GL:AC");
         printf("%s\n", formatted.str().c_str());
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "\tGT:GL");
+        fprintf(outputGrp.fpSpecial, "\tGT:GL:AC");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
     }
 }
