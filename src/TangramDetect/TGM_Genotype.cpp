@@ -292,12 +292,21 @@ void Genotype::SetLikelihood(void)
         }
         else
         {
-            int genotype = -1;
-            long double maxLikelihood = 0;
-            for (unsigned j = 0; j != 3; ++j)
+            unsigned int n = refCount + altCount;
+            unsigned int k = refCount;
+            if (k > altCount)
+                k = altCount;
+
+            long double logCNM = Log10NchooseK(n, k);
+
+            int genotype = 0;
+            long double maxLikelihood = CalculateLikelihood(logCNM, refCount, altCount, genotypePars.p[0]);
+            likelihoods.push_back(maxLikelihood);
+
+            for (unsigned j = 1; j != 3; ++j)
             {
-                long double likelihood = CalculateLikelihood(refCount, altCount, genotypePars.p[j]);
-                likelihoods.push_back(log10(likelihood));
+                long double likelihood = CalculateLikelihood(logCNM, refCount, altCount, genotypePars.p[j]);
+                likelihoods.push_back(likelihood);
 
                 // assign the genotyp with the highest data likelihood
                 if (likelihood > maxLikelihood)
@@ -312,20 +321,20 @@ void Genotype::SetLikelihood(void)
     }
 }
 
-long double Genotype::CalculateLikelihood(unsigned int refCount, unsigned int altCount, double p) const
+double Genotype::CalculateLikelihood(long double log10CNM, unsigned int refCount, unsigned int altCount, double p) const
 {
-    unsigned int n = refCount + altCount;
-    long double cnm = 1.0;
+    return (log10CNM + refCount * log10((long double) p) + altCount * log10((long double) (1 - p)));
+}
 
-    unsigned int m = refCount;
-    if (m > altCount)
-        m = altCount;
+long double Genotype::Log10NchooseK(unsigned int n, unsigned int k) const
+{
+    long double logCNM = 0.0;
 
-    for (unsigned int i = 1, j = n; i <= m; --j, ++i)
+    for (unsigned int i = 1, j = n; i <= k; --j, ++i)
     {
-        cnm *= j;
-        cnm /= i;
+        logCNM += log10(j);
+        logCNM -= log10(i);
     }
 
-    return (cnm * pow((long double) p, refCount) * pow((long double) (1.0 - p), altCount));
+    return logCNM;
 }

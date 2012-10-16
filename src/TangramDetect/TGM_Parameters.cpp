@@ -28,7 +28,7 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       19
+#define OPT_TOTAL_ARGS       20
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_REQUIRED_ARGS    3
@@ -64,15 +64,17 @@ using namespace BamTools;
 
 #define OPT_GENOTYPE             13
 
-#define OPT_GT_RP_MIN_FRAG       14
+#define OPT_BINO_PARS            14
 
-#define OPT_GT_SR_MIN_FRAG       15
+#define OPT_GT_RP_MIN_FRAG       15
 
-#define OPT_MIN_JUMP_LEN         16
+#define OPT_GT_SR_MIN_FRAG       16
 
-#define OPT_THREAD_NUM           17
+#define OPT_MIN_JUMP_LEN         17
 
-#define OPT_OUTPUT               18
+#define OPT_THREAD_NUM           18
+
+#define OPT_OUTPUT               19
 
 
 #define DEFAULT_MIN_CLUSTER_SIZE 2
@@ -169,6 +171,7 @@ void Parameters::Set(const char** argv, int argc)
         {"dt",  NULL, FALSE},
         {"msr",  NULL, FALSE},
         {"gt",  NULL, FALSE},
+        {"bp",  NULL, FALSE},
         {"rpf",  NULL, FALSE},
         {"srf",  NULL, FALSE},
         {"mjl",  NULL, FALSE},
@@ -316,6 +319,26 @@ void Parameters::Set(const char** argv, int argc)
                         TGM_ErrQuit("ERROR: -gt is a flag. No argument is needed.\n");
 
                     genotypePars.doGenotype = true;
+                }
+
+                break;
+            case OPT_BINO_PARS:
+                if (opts[i].value != NULL)
+                {
+                    if (!genotypePars.doGenotype)
+                        TGM_ErrQuit("ERROR: Please turn on the genotype module (-gt).\n");
+
+                    if (sscanf(opts[i].value, "%lf,%lf,%lf", &(genotypePars.p[0]), &(genotypePars.p[1]), &(genotypePars.p[2])) == 3)
+                    {
+                        if (genotypePars.p[0] < 0 || genotypePars.p[0] > 1.0
+                            || genotypePars.p[1] < 0 || genotypePars.p[1] > 1.0
+                            || genotypePars.p[2] < 0 || genotypePars.p[2] > 1.0)
+                        {
+                            TGM_ErrQuit("ERROR: Binominal distribution parameters should be [0.0, 1.0].\n");
+                        }
+                    }
+                    else
+                        TGM_ErrQuit("ERROR: 3 binominal distribution parameters are expected here.\n");
                 }
 
                 break;
@@ -488,6 +511,7 @@ void Parameters::ShowHelp(void) const
     printf("                     -dt   INT    detection set [0xffffffff: report all types of SV]\n");
     printf("                     -msr  FLOAT  minimum score rate for split alignments[0.8]\n");
     printf("                     -gt   FLAG   do genotyping for detected SV events[false]\n");
+    printf("                     -bp   STRING binominal distribution parameters for three possible genotypes(RR, RA and AA).[0.001, 0.5, 0.999]\n");
     printf("                     -rpf  INT    minimum number of supporting read-pair fragments for genotype[2]\n");
     printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype[5]\n");
     printf("                     -mjl  INT    minimum jumping (bam index jump) length for genotyping. Set to 0 to turn off the jump.[500000]\n");
@@ -511,7 +535,13 @@ void Parameters::ShowHelp(void) const
     printf("     `-dt' option will be 0x1(1) + 0x8(8) = 0x9(9). The `-dt' option can take either decimal\n");
     printf("     or hexadecimal (start with `0x') number for input.\n\n");
 
-    printf("  3. Minimum number of supporting read-pair or split-read fragments are the thresholds to trigger genotype module.\n");
+    printf("  3. The parameters for the binominal distribution are used to calculate the genotype likelihood.\n");
+    printf("     This string should contain 3 float numbers (for homozygous reference, heterozygous and homozygous alternatives)\n"
+                 "and is separated by comma, such \"0.001,0.5,0.999\".\n");
+
+    printf("     thresholds (-rpf -srf) this locus will not be submitted for genotyping.\n");
+
+    printf("  4. Minimum number of supporting read-pair or split-read fragments are the thresholds to trigger genotype module.\n");
     printf("     For a given locus, if the number of both read-pair AND split-read supporting fragments are lower than the\n");
     printf("     thresholds (-rpf -srf) this locus will not be submitted for genotyping.\n");
 

@@ -230,9 +230,10 @@ namespace Tangram
 
             minJumpLen = DEFAULT_MIN_JUMP_LEN;
 
-            p[0] = 0.99;
-            p[1] = 0.5;
-            p[2] = 0.01;
+            // parameters for binominal distribution
+            p[0] = 0.999;   // homozygous reference
+            p[1] = 0.5;     // heterozygous
+            p[2] = 0.001;   // homozygous alternative
         }
     };
 

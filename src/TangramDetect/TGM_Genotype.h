@@ -79,9 +79,12 @@ namespace Tangram
 
             void SetLikelihood(void);
 
+            long double Log10NchooseK(unsigned int n, unsigned int k) const;
+
             // assume diploid genome.
             // binomial pdf
-            long double CalculateLikelihood(unsigned int refCount, unsigned int altCount, double p) const;
+            double CalculateLikelihood(long double log10CNM, unsigned int refCount, unsigned int altCount, double p) const;
+
 
         public:
 
