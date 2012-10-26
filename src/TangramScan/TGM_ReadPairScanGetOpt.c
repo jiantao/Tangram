@@ -140,9 +140,11 @@ void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* ar
                 }
                 else
                 {
-                    pScanPars->minMQ = atoi(opts[i].value);
-                    if (pScanPars->minMQ < 0 || pScanPars->minMQ > 255)
+                    int minMQ = atoi(opts[i].value);
+                    if (minMQ < 0 || minMQ > 255)
                         TGM_ErrQuit("ERROR: %s is an invalid minimum mapping quality.\n", opts[i].value);
+
+                    pScanPars->minMQ = minMQ;
                 }
 
                 break;
