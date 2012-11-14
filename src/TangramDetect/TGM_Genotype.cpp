@@ -24,7 +24,6 @@ using namespace Tangram;
 Genotype::Genotype(BamMultiReader& reader, const GenotypePars& genotypePars, const LibTable& libTable, BamPairTable& bamPairTable)
           : reader(reader), genotypePars(genotypePars), libTable(libTable), bamPairTable(bamPairTable)
 {
-
     lastChr = -1;
     lastPos = -1;
     lastEnd = -1;
@@ -98,6 +97,8 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
         int32_t posUpper = pos;
         int32_t posLower = pos;
 
+        // if this is an imprecise event
+        // add a window around the reported position
         if (!isPresice)
         {
             posUpper -= pRpSpecial->posUncertainty / 2;
@@ -111,7 +112,9 @@ bool Genotype::Special(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitE
             if (alignment.Position > pos + 100)
                 break;
 
+            // end position of this fragment
             int32_t fragEnd = 0;
+            // end position of this aligned mate
             int32_t alignEnd = alignment.GetEndPosition(false, true);
 
             bool isUpperMate = false;
@@ -332,8 +335,8 @@ long double Genotype::Log10NchooseK(unsigned int n, unsigned int k) const
 
     for (unsigned int i = 1, j = n; i <= k; --j, ++i)
     {
-        logCNM += log10(j);
-        logCNM -= log10(i);
+        logCNM += log10((long double) j);
+        logCNM -= log10((long double) i);
     }
 
     return logCNM;

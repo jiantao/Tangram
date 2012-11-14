@@ -46,6 +46,7 @@ namespace Tangram
 
             void Init(void);
 
+            // set the prior probabilities for MEI insertions
             void SetSpecialPrior(const double* prior);
 
             // do the genotype for a special insertion locus
@@ -55,6 +56,7 @@ namespace Tangram
 
             bool SpecialFilter(const SpecialEvent* pRpSpecial, const SplitEvent* pSplitEvent) const;
 
+            // jump to a specific position in the bam file
             bool Jump(int32_t refID, int32_t pos);
 
             // set the read-pair fragment count for each sample
@@ -63,6 +65,7 @@ namespace Tangram
             // set the split-read fragment count for each sample
             void SetSampleCountSplit(const SplitEvent& splitEvent);
 
+            // update the number of non-supporting fragment for a given sample
             inline void UpdateNonSupport(int32_t readGrpID)
             {
                 unsigned int sampleID = 0;
@@ -70,6 +73,7 @@ namespace Tangram
                     ++(sampleCount[sampleID].nonSupport);
             }
 
+            // update the number of supporting fragment for a given sample
             inline void UpdateSupport(int32_t readGrpID)
             {
                 unsigned int sampleID = 0;
@@ -79,6 +83,7 @@ namespace Tangram
 
             void SetLikelihood(void);
 
+            // calculate the log10 of N choose K value
             long double Log10NchooseK(unsigned int n, unsigned int k) const;
 
             // assume diploid genome.
@@ -101,6 +106,7 @@ namespace Tangram
 
             BamTools::BamMultiReader& reader;
 
+            // genotyping parameters
             const GenotypePars& genotypePars;
 
             const LibTable& libTable;
@@ -112,6 +118,7 @@ namespace Tangram
             int32_t lastPos;
             int32_t lastEnd;
 
+            // prior probabilities for MEI insertions
             double specialPrior[3];
     };
 };

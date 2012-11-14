@@ -7,7 +7,7 @@
  *
  *        Created:  08/22/2012 08:38:37 PM
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  g++
  *
  *         Author:  Jiantao Wu (), 
  *   Inistitution:  Boston College
@@ -109,10 +109,11 @@ int main(int argc, char *argv[])
         pAligner = &aligner;
     }
 
-    // print out the events (vcf format)
+    // Initialize the genotype module
     Genotype genotype(bamMultiReader, genotypePars, libTable, bamPairTable);
     genotype.Init();
 
+    // print out the events (vcf format)
     Printer printer(&detector, detectPars, pAligner, pRef, libTable, bamPairTable, genotypePars, genotype);
     printer.Init();
     printer.Print();
