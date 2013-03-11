@@ -10,17 +10,15 @@
 #         BUGS:  ---
 #       AUTHOR:  Jiantao Wu (), 
 #  INSTITUTION:  Boston College
-#      VERSION:  0.1.0
+#      VERSION:  0.2.1
 #      CREATED:  08/29/2012 05:01:04 PM
 #===============================================================================
 
 use strict;
 use warnings;
 
-use strict;
-use warnings;
-
 use Getopt::Long;
+use Scalar::Util qw(looks_like_number);
 
 # command line options
 my $filterType = "MEI";
@@ -69,7 +67,6 @@ my $result = GetOptions("vcf=s" => \$vcfFile,
                         "srf=i"  => \$srFragCut, 
                         "help" => \$showHelp);
 
-
 # show the help message if required
 if ($showHelp)
 {
@@ -80,19 +77,22 @@ if ($showHelp)
 $filterType = uc($filterType);
 if (!defined($typeHash{$filterType}))
 {
-    die("ERROR: $filterType is not a valid filter type.\n");
+    DieAndClean("ERROR: $filterType is not a valid filter type.\n");
 }
 
 # open the temporary vcf file
-my $tmpVcfFile = "$vcfFile.tmp.vcf";
-open(TMP, ">", $tmpVcfFile) or die("ERROR: Cannot open the temporary VCF file: $tmpVcfFile.\n");
-push(@tmpFiles, $tmpVcfFile);
+my $tmpVcfFileSR = "$vcfFile.tmp.sr.vcf";
+my $tmpVcfFileRP = "$vcfFile.tmp.rp.vcf";
+open(TMP_SR, ">", $tmpVcfFileSR) or DieAndClean("ERROR: Cannot open the temporary VCF file: $tmpVcfFileSR.\n");
+open(TMP_RP, ">", $tmpVcfFileRP) or DieAndClean("ERROR: Cannot open the temporary VCF file: $tmpVcfFileRP.\n");
+push(@tmpFiles, $tmpVcfFileSR);
+push(@tmpFiles, $tmpVcfFileRP);
 
 # open the vcf file and parse each line of it to remove those low coverage event
 my $vcfHeader = "";
 if ($vcfFile ne "stdin")
 {
-    open(IN, "<", $vcfFile) or die("ERROR: Cannot open the input VCF file: $vcfFile.\n");
+    open(IN, "<", $vcfFile) or DieAndClean("ERROR: Cannot open the input VCF file: $vcfFile.\n");
 }
 else
 {
@@ -115,28 +115,41 @@ while (my $line = <IN>)
     # filter the SV events according to their supporting fragments (reads)
     if ($filterType eq "MEI")
     {
-        if (SpecialFragFilter($data[7]))
+        my $ret = 0;
+        if (($ret = SpecialFragFilter($data[7])) > 0)
         {
             SetSpeicalFamily($data[4]);
-            print TMP "$line\n";
+
+            # events only supported by read pair signal
+            # needs futher filtering
+            if ($ret == 1)
+            {
+                print TMP_RP "$line\n";
+            }
+            else
+            {
+                print TMP_SR "$line\n";
+            }
         }
     }
 }
 
 close IN;
-close TMP;
+close TMP_RP;
+close TMP_SR;
 
 # read in the mask file information
-open(IN, "<", $maskFile) or die("ERROR: Cannot open the input mask list file: $maskFile.\n");
+open(IN, "<", $maskFile) or DieAndClean("ERROR: Cannot open the input mask list file: $maskFile.\n");
 while (my $line = <IN>)
 {
     chomp $line;
     next if length($line) == 0;
     next if $line =~ /^#/;
 
-    my @data = split("\t", $line);
+    my @data = split(" ", $line);
 
-    die("ERROR: invalid format of the mask list file.\n") if (@data < 3);
+    DieAndClean("ERROR: invalid format of the mask list file.\n") if (@data < 3);
+    CheckMaskFile(@data);
 
     $windowSize{uc($data[0])} = $data[1];
     $maskFiles{uc($data[0])} = $data[2];
@@ -146,10 +159,16 @@ close IN;
 # filter the SV events with mask files
 if ($filterType eq "MEI")
 {
-    FilterMEI();
+    my $tmpSort = "$vcfFile.tmp.sort.vcf";
+    push(@tmpFiles, $tmpSort);
+
+    FilterMEI($tmpSort);
+    SortVcf($tmpSort);
 }
 
 CleanUp();
+
+
 
 #===============================================
 # Subroutines
@@ -159,22 +178,27 @@ sub SpecialFragFilter
     my $infoStr = shift(@_);
     my ($rpFrag5, $rpFrag3, $srFrag5, $srFrag3) = $infoStr =~ /FRAG=(\d+),(\d+),(\d+),(\d+)/;
 
+    my $ret = 0;
+
     if ($srFrag5 >= $srFragCut || $srFrag3 >= $srFragCut)
     {
-        return 1;
+        $ret = 1;
     }
     elsif ($rpFrag5 >= $rpFragCut && $rpFrag3 >= $rpFragCut)
     {
-        return 1;
+        $ret = 1;
     }
     elsif (($rpFrag5 >= $rpFragCut || $rpFrag3 >= $rpFragCut) && ($srFrag5 > 0 || $srFrag3 > 0))
     {
-        return 1;
+        $ret = 1;
     }
-    else
+
+    if ($ret == 1 && ($srFrag5 > 0 || $srFrag3 > 0))
     {
-        return 0;
+        $ret = 2;
     }
+
+    return $ret;
 }
 
 sub SetSpeicalFamily
@@ -184,32 +208,81 @@ sub SetSpeicalFamily
     $meiTypes{uc($family)} = 1;
 }
 
+sub CheckMaskFile
+{
+    my (@data) = @_;
+    if (!looks_like_number($data[1])) 
+    {
+        DieAndClean("ERROR: \"$data[1]\" is not a valid window size in the mask list file.\n");
+    }
+
+    DieAndClean("ERROR: \"$data[2]\" is not a valid mask file name.\n") unless (-f $data[2]);
+}
+
 sub FilterMEI
 {
-    my $tmp = "$vcfFile.tmp1.vcf";
-    foreach my $type (keys %maskFiles)
+    my ($tmp) = @_;
+    foreach my $type (keys %meiTypes)
     {
-        if (defined($meiTypes{$type}))
+        if (defined($maskFiles{$type}))
         {
-            my $command = "grep INS:ME:$type $tmpVcfFile | windowBed -w $windowSize{$type} -a stdin -b $maskFiles{$type} -v";
+            my $command = "grep INS:ME:$type $tmpVcfFileRP | windowBed -w $windowSize{$type} -a stdin -b $maskFiles{$type} -v";
+
+            # applied the general masking file
             foreach my $key (keys %maskFiles)
             {
                 if (!defined($meiTypes{$key}))
                 {
-                    $command .= " | windowBed -w $windowSize{$key} -a stdin -b $maskFiles{$key} -v"
+                    $command .= " | windowBed -w $windowSize{$key} -a stdin -b $maskFiles{$key} -v";
                 }
             }
 
-            system("$command >> $tmp");
+            system("$command >> $tmp") == 0 or DieAndClean ("ERROR: Filter command: \n \"$command\" is not valid.\n");
+        }
+        else
+        {
+            system("grep INS:ME:$type $tmpVcfFileRP >> $tmpVcfFileSR") == 0 or DieAndClean ("ERROR: Cannot filter the vcf file.\n");
         }
     }
 
+    my $first = 0;
+    my $command = "";
+    foreach my $key (keys %maskFiles)
+    {
+        if (!defined($meiTypes{$key}))
+        {
+            if ($first == 0)
+            {
+                $command = "windowBed -w $windowSize{$key} -a $tmpVcfFileSR -b $maskFiles{$key} -v";
+                $first = 1;
+            }
+            else
+            {
+                $command .= " | windowBed -w $windowSize{$key} -a stdin -b $maskFiles{$key} -v";
+            }
+        }
+    }
+
+    if ($command ne "")
+    {
+        system("$command >> $tmp") == 0 or DieAndClean ("ERROR: Filter command: \n \"$command\" is not valid.\n");
+    }
+    else
+    {
+        system("cat $tmpVcfFileSR >> $tmp") == 0 or DieAndClean ("ERROR: Cannot filter the vcf file.\n");
+    }
+
+}
+
+sub SortVcf
+{
+    my ($tmp) = @_;
     my $sortCmd = "perl -lane '\$F[0] =~ s/^chr//g; \$F[0] =~ s/^X/23/; \$F[0] =~ s/^Y/24/; \$F[6] = \"PASS\"; print join(\"\t\", \@F)' $tmp";
     $sortCmd .= " | sort -n -k 1 -n -k 2";
     $sortCmd .= " | perl -ne 's/^23/X/; s/^24/Y/; print \"chr\$_\"'";
     if ($outputFile ne "")
     {
-        open(OUT, ">", $outputFile) or die("ERROR: Cannot open the output VCF file: $outputFile.\n");
+        open(OUT, ">", $outputFile) or DieAndClean("ERROR: Cannot open the output VCF file: $outputFile.\n");
         print OUT "$vcfHeader";
         close OUT;
 
@@ -220,8 +293,7 @@ sub FilterMEI
         print "$vcfHeader";
     }
 
-    system("$sortCmd");
-    system("rm -rf $tmp");
+    system("$sortCmd") == 0 or DieAndClean ("ERROR: Cannot sort the vcf file.\n");
 }
 
 sub CleanUp
@@ -230,6 +302,13 @@ sub CleanUp
     {
         system("rm -rf $tmpFile");
     }
+}
+
+sub DieAndClean
+{
+    my ($msg) = @_;
+    CleanUp();
+    die ($msg);
 }
 
 sub ShowHelp
@@ -252,7 +331,7 @@ sub ShowHelp
         1. This script require the installation of "bedtools" package and Unix
            sort in the default directory.
 
-        2. Each entry of he list of mask files is a tab delimited file 
+        2. Each entry of the list of mask files is a tab delimited file 
            with following format:
         
            "TYPE WINDOW_SIZE FILE_NAME"
