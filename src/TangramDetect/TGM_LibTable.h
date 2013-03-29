@@ -89,6 +89,11 @@ namespace Tangram
                 return &specialRefNames;
             }
 
+            inline bool HasSpecialRefNames(void) const
+            {
+                return (specialRefNames.Size() > 0);
+            }
+
             inline const unsigned int GetNumSpecialRef(void) const
             {
                 return specialRefNames.Size();

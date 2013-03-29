@@ -466,6 +466,10 @@ void Detector::MergeInversions(void)
 
 void Detector::CallSpecial(void)
 {
+    if (!libTable.HasSpecialRefNames())
+        TGM_ErrQuit("ERROR: No special information detected in the bam file.\n"
+                            "MEI detection aborted.\n");
+
     pairAttrbtTable.MakeSpecial();
 
     for (unsigned int i = 0; i != pairAttrbtTable.specialSize; i += 2)
