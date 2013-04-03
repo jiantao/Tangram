@@ -162,7 +162,7 @@ void TGM_ReadPairScan(const TGM_ReadPairScanPars* pScanPars)
 
         // finish the process of the histogram and update the library information table
         TGM_FragLenHistArrayFinalize(pHistArray);
-        TGM_LibInfoTableUpdate(pLibTable, pHistArray, oldSize, pScanPars->checkLib);
+        TGM_LibInfoTableUpdate(pLibTable, pHistArray, oldSize, pScanPars->minFrags);
 
         // write the fragment length histogram into the file
         TGM_FragLenHistArrayWrite(pHistArray, histOutput);

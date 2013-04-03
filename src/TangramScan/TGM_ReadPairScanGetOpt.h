@@ -40,7 +40,7 @@ typedef struct
 
     uint32_t prefixLen;            // length of the prefix of the special reference
 
-    TGM_Bool checkLib;             // if check the frequency of normal pairs in a library
+    uint32_t minFrags;             // minimum number of normal fragments in a library
 
 }TGM_ReadPairScanPars;
 

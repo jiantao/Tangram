@@ -303,7 +303,7 @@ TGM_Status TGM_LibInfoTableGetRGIndex(int32_t* pReadGrpIndex, const TGM_LibInfoT
 
 TGM_Status TGM_LibInfoTableCheckPair(unsigned int* pHistIndex, const TGM_LibInfoTable* pTable, TGM_PairStats* pPairStats);
 
-void TGM_LibInfoTableUpdate(TGM_LibInfoTable* pTable, const TGM_FragLenHistArray* pHistArray, unsigned int oldSize, TGM_Bool checkLib);
+void TGM_LibInfoTableUpdate(TGM_LibInfoTable* pTable, const TGM_FragLenHistArray* pHistArray, unsigned int oldSize, uint32_t minNumFrag);
 
 void TGM_LibInfoTableWrite(const TGM_LibInfoTable* pTable, TGM_Bool writeInfo, FILE* libFile);
 

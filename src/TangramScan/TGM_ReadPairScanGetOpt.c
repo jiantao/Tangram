@@ -48,13 +48,15 @@
 
 #define OPT_SPECIAL_PREFIX 6
 
-#define OPT_NO_CHECK_LIB   7
+#define OPT_MIN_NORMAL_FRAG 7
 
 #define DEFAULT_SCAN_CUTOFF 0.01
 
 #define DEFAULT_SCAN_TRIM_RATE 0.002
 
 #define DEFAULT_SCAN_MIN_MQ 20
+
+#define DEFAULT_MIN_NORMAL_FRAG 10000
 
 // set the parameters for the split-read build program from the pScanParsed command line arguments
 void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* argv[])
@@ -68,7 +70,7 @@ void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* ar
         {"tr",   NULL, FALSE},
         {"mq",  NULL, FALSE},
         {"sp",  NULL, FALSE},
-        {"ncl",  NULL, FALSE},
+        {"mf",  NULL, FALSE},
         {NULL,   NULL, FALSE}
     };
 
@@ -168,11 +170,16 @@ void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* ar
                 }
 
                 break;
-            case OPT_NO_CHECK_LIB:
+            case OPT_MIN_NORMAL_FRAG:
                 if (opts[i].isFound)
-                    pScanPars->checkLib = FALSE;
+                {
+                    if (opts[i].value != NULL)
+                        pScanPars->minFrags = atoi(opts[i].value);
+                    else
+                        TGM_ErrQuit("ERROR: Minimum number of normal fragments is not specified.\n");
+                }
                 else
-                    pScanPars->checkLib = TRUE;
+                    pScanPars->minFrags = DEFAULT_MIN_NORMAL_FRAG;
 
                 break;
             default:
@@ -192,7 +199,7 @@ void TGM_ReadPairScanHelp(void)
     printf("Options:             -cf   FLOAT  threashold for normal read pair in the fragment length distribution[0.01 total for both side]\n");
     printf("                     -tr   FLOAT  trim rate for the fragment length distribution[0.02 total for both side]\n");
     printf("                     -mq   INT    minimum mapping quality for a normal read pair\n");
-    printf("                     -ncl  FLAG   not checking the number of normal fragments in a library[false]\n");
+    printf("                     -mf   INT    minimum number of nomral fragments in a library[10000]\n");
     printf("                     -help        print this help message\n");
     exit(0);
 }

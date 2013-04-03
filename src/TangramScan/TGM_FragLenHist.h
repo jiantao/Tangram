@@ -27,8 +27,6 @@
 
 #define MIN_FRAGLEN_HIST_SIZE 10
 
-#define MIN_FRAGLEN_HIST_FREQ 10000
-
 // the object used to hold the fragment length histogram of a given read group
 typedef struct TGM_FragLenHist
 {

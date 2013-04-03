@@ -1394,12 +1394,12 @@ TGM_Status TGM_LibInfoTableGetRGIndex(int32_t* pReadGrpIndex, const TGM_LibInfoT
 }
 
 
-void TGM_LibInfoTableUpdate(TGM_LibInfoTable* pTable, const TGM_FragLenHistArray* pHistArray, unsigned int oldSize, TGM_Bool checkLib)
+void TGM_LibInfoTableUpdate(TGM_LibInfoTable* pTable, const TGM_FragLenHistArray* pHistArray, unsigned int oldSize, uint32_t minNumFrag)
 {
     for (unsigned int i = 0; i != pHistArray->size; ++i)
     {
         const TGM_FragLenHist* pHist = pHistArray->data + i;
-        if (checkLib && (pHist->size < MIN_FRAGLEN_HIST_SIZE || pHist->modeCount[0] < MIN_FRAGLEN_HIST_FREQ))
+        if (minNumFrag > 0 && (pHist->size < MIN_FRAGLEN_HIST_SIZE || pHist->modeCount[0] < minNumFrag))
         {
             pTable->pLibInfo[oldSize].fragLenMedian = 0;
             pTable->pLibInfo[oldSize].fragLenLow = 0;
