@@ -24,7 +24,7 @@
 #include "TGM_ReadPairScanGetOpt.h"
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_SCAN_TOTAL_NUM 7
+#define OPT_SCAN_TOTAL_NUM 8
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_SCAN_REQUIRED_NUM 2
@@ -48,6 +48,8 @@
 
 #define OPT_SPECIAL_PREFIX 6
 
+#define OPT_NO_CHECK_LIB   7
+
 #define DEFAULT_SCAN_CUTOFF 0.01
 
 #define DEFAULT_SCAN_TRIM_RATE 0.002
@@ -66,6 +68,7 @@ void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* ar
         {"tr",   NULL, FALSE},
         {"mq",  NULL, FALSE},
         {"sp",  NULL, FALSE},
+        {"ncl",  NULL, FALSE},
         {NULL,   NULL, FALSE}
     };
 
@@ -165,6 +168,13 @@ void TGM_ReadPairScanSetPars(TGM_ReadPairScanPars* pScanPars, int argc, char* ar
                 }
 
                 break;
+            case OPT_NO_CHECK_LIB:
+                if (opts[i].isFound)
+                    pScanPars->checkLib = FALSE;
+                else
+                    pScanPars->checkLib = TRUE;
+
+                break;
             default:
                 TGM_ErrQuit("ERROR: Unrecognized argument.\n");
                 break;
@@ -182,6 +192,7 @@ void TGM_ReadPairScanHelp(void)
     printf("Options:             -cf   FLOAT  threashold for normal read pair in the fragment length distribution[0.01 total for both side]\n");
     printf("                     -tr   FLOAT  trim rate for the fragment length distribution[0.02 total for both side]\n");
     printf("                     -mq   INT    minimum mapping quality for a normal read pair\n");
+    printf("                     -ncl  FLAG   not checking the number of normal fragments in a library[false]\n");
     printf("                     -help        print this help message\n");
     exit(0);
 }

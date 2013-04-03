@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include "TGM_Types.h"
 
 // parameters used for read pair build
 typedef struct
@@ -38,6 +39,8 @@ typedef struct
     char* specialPrefix;           // prefix of the special reference
 
     uint32_t prefixLen;            // length of the prefix of the special reference
+
+    TGM_Bool checkLib;             // if check the frequency of normal pairs in a library
 
 }TGM_ReadPairScanPars;
 
