@@ -1,7 +1,13 @@
 BAM_LIB:=$(LIB_DIR)/libbamtools.a
 SAM_LIB:=$(LIB_DIR)/libbam.a
+SSW:=$(OBJ_DIR)/ssw.o
 
-libs: $(BAM_LIB) $(SAM_LIB)
+#SUB_DIRS = stripedSW
+
+libs: $(SSW) $(BAM_LIB) $(SAM_LIB)
+
+$(SSW): stripedSW/ssw.c stripedSW/ssw_cpp.cpp
+	@$(MAKE) all --no-print-directory --directory=stripedSW; 
 
 $(BAM_LIB): 
 	@echo "  * generating libbamtools.a"
@@ -24,4 +30,4 @@ clean:
 	@rm -rf bamtools/bin bamtools/build bamtools/lib/ bamtools/include
 	@$(MAKE) clean --no-print-directory -C samtools
 
-.PHONY: libs clean
+.PHONY: all libs clean

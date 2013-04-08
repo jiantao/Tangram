@@ -22,7 +22,7 @@
 #include <pthread.h>
 #include <vector>
 
-#include "ssw.h"
+#include "../OutSources/stripedSW/ssw.h"
 #include "TGM_BamPair.h"
 #include "TGM_Detector.h"
 #include "TGM_Parameters.h"

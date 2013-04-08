@@ -8,7 +8,7 @@ PROGRAM:=$(BIN_DIR)/tangram_detect
 
 $(PROGRAM): $(OBJS) $(COBJS)
 	@echo "  * linking $(PROGRAM)"
-	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) -lbamtools -lz
+	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(OBJ_DIR)/ssw.o -lbamtools -lz
 
 $(OBJS): $(SOURCES)
 	@echo "  * compiling" $(*F).cpp
