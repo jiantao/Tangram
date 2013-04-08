@@ -5,7 +5,9 @@ OBJS:=$(addprefix $(OBJ_DIR)/,$(SOURCES:.cpp=.o))
 PROGRAM:=$(BIN_DIR)/tangram_bam
 
 REQUIRED_OBJS = $(OBJ_DIR)/Fasta.o \
-		$(OBJ_DIR)/split.o
+		$(OBJ_DIR)/split.o \
+		$(OBJ_DIR)/ssw_cpp.o \
+		$(OBJ_DIR)/ssw.o
 
 $(PROGRAM): $(OBJS)
 	@echo "  * linking $(PROGRAM)"

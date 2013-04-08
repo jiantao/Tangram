@@ -51,13 +51,14 @@ inline bool LoadReference(const char* fa, FastaReference* fasta) {
 }
 
 bool BuildAligner(
-    const FastaReference& fasta, 
+    FastaReference* fasta, 
     vector<StripedSmithWaterman::Aligner*>* aligners) {
-  for (vector<string>::const_iterator ite = fasta.index->sequenceNames.begin();
-       ite != fasta.index->sequenceNames.end(); ++ite) {
-    //StripedSmithWaterman::aligner* al_ptr = new StripedSmithWaterman::aligner;
-    //al_ptr->SetReferenceSequence(fasta.getSequence(*ite), ite->length);
-    fprintf(stderr,"%s\n", (*ite).c_str());
+  for (vector<string>::const_iterator ite = fasta->index->sequenceNames.begin();
+       ite != fasta->index->sequenceNames.end(); ++ite) {
+    StripedSmithWaterman::Aligner* al_ptr = new StripedSmithWaterman::Aligner;
+    al_ptr->SetReferenceSequence(fasta->getSequence(*ite).c_str(), 
+                                 fasta->sequenceLength(*ite));
+    aligners->push_back(al_ptr);
   }
 
   return true;
@@ -82,9 +83,12 @@ int main(int argc, char** argv) {
 
   // Build SSW aligners for every reference in fasta
   vector<StripedSmithWaterman::Aligner*> aligners;
-  BuildAligner(fasta, &aligners);
+  BuildAligner(&fasta, &aligners);
 
-
+  // Close
   reader.Close();
   writer.Close();
+  for (vector<StripedSmithWaterman::Aligner*>::iterator ite = aligners.begin();
+       ite != aligners.end(); ++ite)
+      free(*ite);
 }
