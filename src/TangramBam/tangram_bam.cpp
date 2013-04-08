@@ -9,6 +9,8 @@
 
 using namespace std;
 
+static const StripedSmithWaterman::Filter kFilter(false, false, 0, 32467);
+
 void ShowHelp() {
   fprintf(stderr, "Usage: tangram_bam <in_bam> <ref_fa> <out_bam>\n\n");
   fprintf(stderr, "tangram_bam will generate ZA tags for bams");
@@ -52,16 +54,28 @@ inline bool LoadReference(const char* fa, FastaReference* fasta) {
 
 bool BuildAligner(
     FastaReference* fasta, 
-    vector<StripedSmithWaterman::Aligner*>* aligners) {
+    vector<StripedSmithWaterman::Aligner*>* aligners,
+    vector<string>* ref_names) {
   for (vector<string>::const_iterator ite = fasta->index->sequenceNames.begin();
        ite != fasta->index->sequenceNames.end(); ++ite) {
     StripedSmithWaterman::Aligner* al_ptr = new StripedSmithWaterman::Aligner;
     al_ptr->SetReferenceSequence(fasta->getSequence(*ite).c_str(), 
                                  fasta->sequenceLength(*ite));
     aligners->push_back(al_ptr);
+    ref_names->push_back(*ite);
   }
 
   return true;
+}
+
+void Align(
+    const string& query,
+    const vector<StripedSmithWaterman::Aligner*>& aligners,
+    vector<StripedSmithWaterman::Alignment>* alignments) {
+  for (unsigned int i = 0; i < aligners.size(); ++i) {
+    (*alignments)[i].Clear();
+    aligners[i]->Align(query.c_str(), kFilter, &((*alignments)[i]));
+  }
 }
 
 int main(int argc, char** argv) {
@@ -83,12 +97,22 @@ int main(int argc, char** argv) {
 
   // Build SSW aligners for every reference in fasta
   vector<StripedSmithWaterman::Aligner*> aligners;
-  BuildAligner(&fasta, &aligners);
+  vector<string> ref_names;
+  BuildAligner(&fasta, &aligners, &ref_names);
+
+  // Prepare alignment vector
+  vector<StripedSmithWaterman::Alignment> alignments(aligners.size());
+
+  // CORE ALGORITHM
+  BamTools::BamAlignment bam_alignment;
+  while (reader.GetNextAlignment(bam_alignment)) {
+    Align(bam_alignment.QueryBases, aligners, &alignments);
+  }
 
   // Close
   reader.Close();
   writer.Close();
   for (vector<StripedSmithWaterman::Aligner*>::iterator ite = aligners.begin();
        ite != aligners.end(); ++ite)
-      free(*ite);
+    free(*ite);
 }
