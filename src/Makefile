@@ -16,7 +16,13 @@ export CXXFLAGS := -Wall -O2
 export PTHREAD := -pthread
 export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
 
-SUBDIRS := OutSources TangramScan TangramMerge TangramDetect TangramIndex TangramFilter
+SUBDIRS := OutSources \
+		TangramBam \
+		TangramScan \
+		TangramMerge \
+		TangramDetect \
+		TangramIndex \
+		TangramFilter
 
 all:
 	@echo "Building Tangram"
