@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <limits.h>
 
 #include <vector>
 
@@ -78,6 +79,23 @@ void Align(
   }
 }
 
+int PickBestAlignment(
+    const int& request_score,
+    const vector<StripedSmithWaterman::Alignment>& alignments) {
+  
+  int sw_score_max = INT_MIN;
+  int index = 0;
+  for (unsigned int i = 0; i < alignments.size(); ++i) {
+    if (alignments[i].sw_score > sw_score_max) {
+      sw_score_max = alignments[i].sw_score;
+      index = i;
+    }
+  }
+
+  if (sw_score_max > request_score) return index;
+  else return -1;
+}
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     ShowHelp();
@@ -107,6 +125,7 @@ int main(int argc, char** argv) {
   BamTools::BamAlignment bam_alignment;
   while (reader.GetNextAlignment(bam_alignment)) {
     Align(bam_alignment.QueryBases, aligners, &alignments);
+    int index = PickBestAlignment(bam_alignment.Length, alignments);
   }
 
   // Close
