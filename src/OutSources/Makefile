@@ -1,15 +1,17 @@
 BAM_LIB:=$(LIB_DIR)/libbamtools.a
 SAM_LIB:=$(LIB_DIR)/libbam.a
-SSW:=$(OBJ_DIR)/ssw.o
+SSW:=$(OBJ_DIR)/ssw.o $(OBJ_DIR)/ssw_cpp.o
+FASTA:=$(OBJ_DIR)/Fasta.o
 
-#SUB_DIRS = stripedSW
+libs: $(SSW) $(FASTA) $(BAM_LIB) $(SAM_LIB)
 
-libs: $(SSW) $(BAM_LIB) $(SAM_LIB)
+$(SSW): stripedSW/*
+	@$(MAKE) all --no-print-directory --directory=stripedSW;
 
-$(SSW): stripedSW/ssw.c stripedSW/ssw_cpp.cpp
-	@$(MAKE) all --no-print-directory --directory=stripedSW; 
+$(FASTA): fasta/*
+	@$(MAKE) all --no-print-directory --directory=fasta;
 
-$(BAM_LIB): 
+$(BAM_LIB):
 	@echo "  * generating libbamtools.a"
 	@cd bamtools/ && mkdir -p build && cd build && cmake .. && $(MAKE)
 	@echo "  * copying libbamtools.a to the library directory"
@@ -31,3 +33,4 @@ clean:
 	@$(MAKE) clean --no-print-directory -C samtools
 
 .PHONY: all libs clean
+
