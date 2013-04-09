@@ -44,6 +44,8 @@ void ShowHelp() {
 bool OpenBams(
     const string& infilename,
     const string& outfilename,
+    const int& no_arg,
+    char** arguments,
     BamTools::BamReader* reader,
     BamTools::BamWriter* writer) {
   
@@ -55,6 +57,18 @@ bool OpenBams(
 
   // Load header and ref
   string header = reader->GetHeaderText();
+  size_t pos1 = header.find("SO:");
+  if (pos1 != string::npos) {
+    size_t pos2 = header.find("SO:queryname");
+    if (pos2 != string::npos) header.replace(pos2, 12, "SO:unsorted");
+    pos2 = header.find("SO:coordinate");
+    if (pos2 != string::npos) header.replace(pos2, 13, "SO:unsorted");
+  }
+  header += "@PG\tID:tangram_bam\tCL:";
+  for (int i = 0; i < no_arg; ++i) {
+    header += arguments[i];
+  }
+  header += "\n";
   BamTools::RefVector ref = reader->GetReferenceData();
 
   if (!writer->Open(outfilename, header, ref)) {
@@ -230,7 +244,7 @@ int main(int argc, char** argv) {
   string outfilename = argv[3];
   BamTools::BamReader reader;
   BamTools::BamWriter writer;
-  if (!OpenBams(infilename, outfilename, &reader, &writer)) return 1;
+  if (!OpenBams(infilename, outfilename, argc, argv, &reader, &writer)) return 1;
 
   // Open fasta
   FastaReference fasta;
@@ -255,7 +269,7 @@ int main(int argc, char** argv) {
     al.Clear();
     al.bam_alignment = bam_alignment;
     al.hit_insertion = (index == -1) ? false: true;
-    al.ins_prefix    = (index == -1) ? "" : ref_names[index].substr(0,2);
+    al.ins_prefix    = (index == -1) ? "" : ref_names[index].substr(8,2);
     StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
   }
 
