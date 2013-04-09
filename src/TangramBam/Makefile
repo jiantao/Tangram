@@ -15,5 +15,5 @@ $(PROGRAM): $(OBJS)
 
 $(OBJS): $(SOURCES)
 	@echo "  * compiling" $(*F).cpp
-	@$(CXX) -c -o $@ $(*F).cpp $(CXXFLAGS) $(INCLUDES)
+	@$(CXX) -c -o $@ $(*F).cpp $(CXXFLAGS) -std=c++0x $(INCLUDES)
 

@@ -2,6 +2,8 @@
 #include <limits.h>
 
 #include <vector>
+#include <string>
+#include <iostream>
 
 #include "api/BamReader.h"
 #include "api/BamWriter.h"
@@ -10,7 +12,25 @@
 
 using namespace std;
 
-static const StripedSmithWaterman::Filter kFilter(false, false, 0, 32467);
+const StripedSmithWaterman::Filter kFilter(false, false, 0, 32467);
+const int kAlignmentMapSize = 10000;
+
+struct Alignment {
+  BamTools::BamAlignment bam_alignment;
+  bool hit_insertion;
+  string ins_prefix;
+
+  Alignment()
+      : bam_alignment()
+      , hit_insertion(false)
+      , ins_prefix()
+  {}
+
+  void Clear() {
+    hit_insertion = false;
+    ins_prefix.clear();
+  }
+};
 
 void ShowHelp() {
   fprintf(stderr, "Usage: tangram_bam <in_bam> <ref_fa> <out_bam>\n\n");
@@ -96,6 +116,109 @@ int PickBestAlignment(
   else return -1;
 }
 
+void GetZa(const Alignment& al, const Alignment& mate, string* za) {
+  const bool mate1 = al.bam_alignment.IsFirstMate();
+  Alignment const *mate1_ptr, *mate2_ptr;
+
+  if (mate1) {
+    *za = "<@;";
+    mate1_ptr = &al;
+    mate2_ptr = &mate;
+  } else {
+    *za = "<&;";
+    mate1_ptr = &mate;
+    mate2_ptr = &al;
+  }
+
+  *za += (std::to_string(mate1_ptr->bam_alignment.MapQuality) + ";;" 
+          + (mate1_ptr->hit_insertion ? mate1_ptr->ins_prefix : "") 
+	  + ";1;");
+  
+  if (mate1) {
+    *za += ";><&;";
+  } else {
+    *za += ";><@;";
+  }
+
+  *za += (std::to_string(mate2_ptr->bam_alignment.MapQuality) + ";;" 
+          + (mate2_ptr->hit_insertion ? mate2_ptr->ins_prefix : "") 
+	  + ";1;;>");
+
+}
+
+void WriteAlignment(
+    const Alignment& mate,
+    Alignment* al,
+    BamTools::BamWriter* writer) {
+  string za;
+  GetZa(*al, mate, &za);
+
+  al->bam_alignment.AddTag("ZA","Z",za);
+
+  writer->SaveAlignment(al->bam_alignment);
+}
+
+void WriteAlignment(map<string, Alignment>* al_map_ite, 
+                    BamTools::BamWriter* writer) {
+  for (map<string, Alignment>::iterator ite = al_map_ite->begin();
+       ite != al_map_ite->end(); ++ite) {
+    Alignment* al = &(ite->second);
+    string za;
+    if (al->bam_alignment.IsPaired()) {
+      if (al->bam_alignment.IsFirstMate()) {
+        za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+             + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
+	     + "<&;;;;;;>";
+      } else {
+        za = "<&;;;;;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+             + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+      }
+    } else {
+      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+    }
+
+    al->bam_alignment.AddTag("ZA","Z",za);
+    writer->SaveAlignment(al->bam_alignment);
+  }
+}
+
+void StoreAlignment(
+    Alignment* al,
+    map<string, Alignment> *al_map_cur,
+    map<string, Alignment> *al_map_pre,
+    BamTools::BamWriter* writer) {
+  if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
+    WriteAlignment(al_map_pre, writer);
+    al_map_pre->clear();
+    map<string, Alignment> *tmp = al_map_pre;
+    al_map_pre = al_map_cur;
+    al_map_cur = tmp;
+
+  }
+
+  map<string, Alignment>::iterator ite_cur = al_map_cur->find(al->bam_alignment.Name);
+  if (ite_cur == al_map_cur->end()) {
+    if (!al_map_pre) {
+      map<string, Alignment>::iterator ite_pre = al_map_pre->find(al->bam_alignment.Name);
+      if (ite_pre == al_map_pre->end()) { // al is not found in cur or pre either
+        (*al_map_cur)[al->bam_alignment.Name] = *al;
+      } else { // find the mate in al_map_pre
+        WriteAlignment(ite_pre->second, al, writer);
+        WriteAlignment(*al, &(ite_pre->second), writer);
+        al_map_pre->erase(ite_pre);
+      }
+    } else { // al is not found in cur and pre is NULL
+      (*al_map_cur)[al->bam_alignment.Name] = *al;
+    }
+  } else { // find the mate in al_map_cur
+    WriteAlignment(ite_cur->second, al, writer);
+    WriteAlignment(*al, &(ite_cur->second), writer);
+    al_map_cur->erase(ite_cur);
+  }
+    
+}
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     ShowHelp();
@@ -123,9 +246,17 @@ int main(int argc, char** argv) {
 
   // CORE ALGORITHM
   BamTools::BamAlignment bam_alignment;
+  map<string, Alignment> al_map1, al_map2;
+  map<string, Alignment> *al_map_cur = &al_map1, *al_map_pre = &al_map2;
+  Alignment al;
   while (reader.GetNextAlignment(bam_alignment)) {
     Align(bam_alignment.QueryBases, aligners, &alignments);
     int index = PickBestAlignment(bam_alignment.Length, alignments);
+    al.Clear();
+    al.bam_alignment = bam_alignment;
+    al.hit_insertion = (index == -1) ? false: true;
+    al.ins_prefix    = (index == -1) ? "" : ref_names[index].substr(0,2);
+    StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
   }
 
   // Close
