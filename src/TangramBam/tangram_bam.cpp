@@ -274,6 +274,10 @@ int main(int argc, char** argv) {
   }
 
   // Close
+  WriteAlignment(&al_map1, &writer);
+  WriteAlignment(&al_map2, &writer);
+  al_map1.clear();
+  al_map2.clear();
   reader.Close();
   writer.Close();
   for (vector<StripedSmithWaterman::Aligner*>::iterator ite = aligners.begin();
