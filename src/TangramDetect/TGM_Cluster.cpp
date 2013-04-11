@@ -289,7 +289,7 @@ void Cluster::Print(int32_t refID, const char* specialID) const
     {
         int startIdx = elements[i].startIndex;
         int firstAttrbt = (*pPairAttrbts)[startIdx].firstAttrbt;
-        printf("chr%d\t%d\t%d\t%d\t%f\n", refID + 1, firstAttrbt, firstAttrbt + 1, elements[i].numReadPair, elements[i].std[0]);
+        printf("%d\t%d\t%d\t%d\t%f\n", refID + 1, firstAttrbt, firstAttrbt + 1, elements[i].numReadPair, elements[i].std[0]);
     }
 
     printf("\n");
