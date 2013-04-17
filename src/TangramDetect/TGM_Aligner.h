@@ -19,7 +19,7 @@
 #ifndef  TGM_ALIGNER_H
 #define  TGM_ALIGNER_H
 
-#include "ssw.h"
+#include "../OutSources/stripedSW/ssw.h"
 #include "TGM_Array.h"
 #include "TGM_BamPair.h"
 #include "TGM_Reference.h"

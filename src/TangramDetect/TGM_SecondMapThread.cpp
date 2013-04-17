@@ -304,7 +304,7 @@ s_align* SecondMapThread::AlignSecPartial(bool& isRescued, RescuePartial& rescue
     // TODO: adjust the gap open and extention penalty
     s_profile* pProfile = ssw_init(readSeq, readLen, alignerPars.secMat, 5, 2);
     s_align* pAlignment = ssw_align(pProfile, refRegion.pRef, refRegion.len, alignerPars.secGapOpen, alignerPars.secGapExt, 
-                                    alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter);
+                                    alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter, readLen);
 
     init_destroy(pProfile);
 
@@ -385,7 +385,7 @@ s_align* SecondMapThread::AlignSecPartial(bool& isRescued, RescuePartial& rescue
         // TODO: adjust the gap open and extention penalty
         pProfile = ssw_init(readSeq, readLen, alignerPars.secMat, 5, 2);
         pAlignment = ssw_align(pProfile, refRegion.pRef, refRegion.len, alignerPars.secGapOpen, alignerPars.secGapExt, 
-                               alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter);
+                               alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter, readLen);
 
         isReversed ^= 1;
         init_destroy(pProfile);

@@ -11,12 +11,18 @@ export INCLUDE_DIR:=$(SRC_DIR)/include
 
 export CC := gcc
 export CXX := g++
-export CFLAGS := --std=gnu99 -Wall -O2
-export CXXFLAGS := -Wall -O2
+export CFLAGS := --std=gnu99 -Wall -O2 -g
+export CXXFLAGS := -Wall -O2 -g
 export PTHREAD := -pthread
 export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
 
-SUBDIRS := OutSources TangramScan TangramMerge TangramDetect TangramIndex TangramFilter
+SUBDIRS := OutSources \
+		TangramBam \
+		TangramScan \
+		TangramMerge \
+		TangramDetect \
+		TangramIndex \
+		TangramFilter
 
 all:
 	@echo "Building Tangram"

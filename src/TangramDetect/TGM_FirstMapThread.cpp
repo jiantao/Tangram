@@ -115,7 +115,7 @@ void* FirstMapThread::StartThread(void* threadData)
         {
             s_profile* pProfile = ssw_init(orphanPair.read.seq, orphanPair.read.len, alignerPars.mat, 5, 2);
             s_align* pAlignment = ssw_align(pProfile, refRegion.pRef, refRegion.len, alignerPars.gapOpen, 
-                                            alignerPars.gapExt, alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter);
+                                            alignerPars.gapExt, alignerPars.flag, alignerPars.scoreFilter, alignerPars.distFilter, orphanPair.read.len);
 
             PartialType partialType;
             bool isRescued = false;

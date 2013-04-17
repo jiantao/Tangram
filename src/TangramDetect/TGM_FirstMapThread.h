@@ -19,7 +19,7 @@
 #ifndef  TGM_FIRSTMAPTHREAD_H
 #define  TGM_FIRSTMAPTHREAD_H
 
-#include "ssw.h"
+#include "../OutSources/stripedSW/ssw.h"
 #include "TGM_Array.h"
 #include "TGM_SplitData.h"
 #include "TGM_BamPair.h"

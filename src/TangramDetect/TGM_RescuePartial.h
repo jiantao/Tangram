@@ -19,7 +19,7 @@
 #define  TGM_RESCUEPARTIAL_H
 
 #include <stdint.h>
-#include "ssw.h"
+#include "../OutSources/stripedSW/ssw.h"
 #include "TGM_Array.h"
 #include "TGM_SplitData.h"
 
