@@ -103,6 +103,20 @@ bool BuildAligner(
   return true;
 }
 
+void GetReverseComplement(const string& query, string* reverse) {
+  reverse->clear();
+
+  for (string::const_reverse_iterator ite = query.rbegin(); ite != query.rend(); ++ite) {
+    switch(*ite) {
+      case 'A': *reverse += 'T'; break;
+      case 'C': *reverse += 'G'; break;
+      case 'G': *reverse += 'C'; break;
+      case 'T': *reverse += 'A'; break;
+      default: *reverse += 'N';
+    }
+  }
+}
+
 void Align(
     const string& query,
     const vector<StripedSmithWaterman::Aligner*>& aligners,
@@ -266,6 +280,12 @@ int main(int argc, char** argv) {
   while (reader.GetNextAlignment(bam_alignment)) {
     Align(bam_alignment.QueryBases, aligners, &alignments);
     int index = PickBestAlignment(bam_alignment.Length, alignments);
+    if (index == -1) {
+      string reverse;
+      GetReverseComplement(bam_alignment.QueryBases, &reverse);
+      Align(reverse, aligners, &alignments);
+      index = PickBestAlignment(bam_alignment.Length, alignments);
+    }
     al.Clear();
     al.bam_alignment = bam_alignment;
     al.hit_insertion = (index == -1) ? false: true;
