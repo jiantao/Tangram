@@ -237,11 +237,12 @@ sub FilterMEI
                 }
             }
 
-            system("$command >> $tmp") == 0 or DieAndClean ("ERROR: Filter command: \n \"$command\" is not valid.\n");
+            system("$command >> $tmp");
         }
         else
         {
-            system("grep INS:ME:$type $tmpVcfFileRP >> $tmpVcfFileSR") == 0 or DieAndClean ("ERROR: Cannot filter the vcf file.\n");
+            print STDERR "WARNING: Filter of $type is not provided.\n";
+            system("grep INS:ME:$type $tmpVcfFileRP >> $tmpVcfFileSR");
         }
     }
 
@@ -265,11 +266,11 @@ sub FilterMEI
 
     if ($command ne "")
     {
-        system("$command >> $tmp") == 0 or DieAndClean ("ERROR: Filter command: \n \"$command\" is not valid.\n");
+        system("$command >> $tmp");
     }
     else
     {
-        system("cat $tmpVcfFileSR >> $tmp") == 0 or DieAndClean ("ERROR: Cannot filter the vcf file.\n");
+        system("cat $tmpVcfFileSR >> $tmp");
     }
 
 }
