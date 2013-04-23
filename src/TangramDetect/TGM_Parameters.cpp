@@ -536,8 +536,8 @@ void Parameters::ShowHelp(void) const
     printf("     or hexadecimal (start with `0x') number for input.\n\n");
 
     printf("  3. The parameters for the binominal distribution are used to calculate the genotype likelihood.\n");
-    printf("     This string should contain 3 float numbers (for homozygous reference, heterozygous and homozygous alternatives)\n"
-                 "and is separated by comma, such \"0.001,0.5,0.999\".\n");
+    printf("     This string should contain 3 float numbers (for homozygous reference, heterozygous and homozygous alternatives)\n");
+    printf("     and is separated by comma, such \"0.001,0.5,0.999\".\n");
 
     printf("     thresholds (-rpf -srf) this locus will not be submitted for genotyping.\n");
 
