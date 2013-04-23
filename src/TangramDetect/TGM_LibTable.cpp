@@ -83,8 +83,7 @@ bool LibTable::Read(FILE* fpLibInput, int maxFragDiff)
     ReadSamples(sizeSM, fpLibInput);
     ReadReadGrps(sizeRG, fpLibInput);
 
-    if (maxFragDiff > 0)
-        CheckReadGrps(maxFragDiff);
+    CheckReadGrps(maxFragDiff);
 
     readSize = fread(&sizeSP, sizeof(uint32_t), 1, fpLibInput);
     if (readSize != 1)
@@ -301,8 +300,9 @@ void LibTable::CheckReadGrps(int maxFragDiff)
     {
         if (seqTech[i] == ST_ILLUMINA)
         {
-            if (libInfo[i].fragLenHigh - libInfo[i].fragLenLow > maxFragDiff)
+            if (maxFragDiff > 0 && libInfo[i].fragLenHigh - libInfo[i].fragLenLow > maxFragDiff)
             {
+                TGM_ErrMsg("WARNING: Library \"%s\" is filtered out due to a low quality (-cl).\n", readGrpNames[i]);
                 libInfo[i].fragLenMedian = 0;
                 libInfo[i].fragLenHigh = 0;
             }
@@ -315,7 +315,8 @@ void LibTable::CheckReadGrps(int maxFragDiff)
     }
 
     if (newMaxFrag == 0)
-        TGM_ErrQuit("ERROR: No valid read groups after filtering.\n");
+        TGM_ErrQuit("ERROR: All libraries in bam files are low-quality and filtered out.\n"
+                    "       Adjust -mf in \"tangram_scan\" or -cl in \"tangram_detect\" to loose the threshold.\n");
 
     fragLenMax = newMaxFrag;
 }
@@ -333,7 +334,7 @@ void LibTable::ReadSpecialRef(uint32_t sizeSP, FILE* fpLibInput)
         specialRefNames[i] = (char*) calloc(sizeof(char), 3);
         readSize = fread(specialRefNames[i], sizeof(char), 2, fpLibInput);
         if (readSize != 2)
-            TGM_ErrQuit("ERROR: Cannot read the special reference ID into the library information file.\n");
+            TGM_ErrQuit("ERROR: Cannot read the special reference ID from the library information file.\n");
 
         UpdateSpecialRefHash(i, specialRefNames[i]);
     }

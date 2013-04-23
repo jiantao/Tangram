@@ -1401,6 +1401,7 @@ void TGM_LibInfoTableUpdate(TGM_LibInfoTable* pTable, const TGM_FragLenHistArray
         const TGM_FragLenHist* pHist = pHistArray->data + i;
         if (minNumFrag > 0 && (pHist->size < MIN_FRAGLEN_HIST_SIZE || pHist->modeCount[0] < minNumFrag))
         {
+            TGM_ErrMsg("WARNING: Library \"%s\" is filtered out due to low quality (-mf).\n", pTable->pReadGrps[oldSize]);
             pTable->pLibInfo[oldSize].fragLenMedian = 0;
             pTable->pLibInfo[oldSize].fragLenLow = 0;
             pTable->pLibInfo[oldSize].fragLenHigh = 0;
