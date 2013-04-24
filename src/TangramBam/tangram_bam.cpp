@@ -1,5 +1,7 @@
+#include "tangram_bam.h"
 #include <stdio.h>
 #include <limits.h>
+#include <getopt.h>
 
 #include <vector>
 #include <string>
@@ -11,26 +13,6 @@
 #include "../OutSources/stripedSW/ssw_cpp.h"
 
 using namespace std;
-
-const StripedSmithWaterman::Filter kFilter(false, false, 0, 32467);
-const int kAlignmentMapSize = 10000;
-
-struct Alignment {
-  BamTools::BamAlignment bam_alignment;
-  bool hit_insertion;
-  string ins_prefix;
-
-  Alignment()
-      : bam_alignment()
-      , hit_insertion(false)
-      , ins_prefix()
-  {}
-
-  void Clear() {
-    hit_insertion = false;
-    ins_prefix.clear();
-  }
-};
 
 void ShowHelp() {
   fprintf(stderr, "Usage: tangram_bam <in_bam> <ref_fa> <out_bam>\n\n");
@@ -44,8 +26,7 @@ void ShowHelp() {
 bool OpenBams(
     const string& infilename,
     const string& outfilename,
-    const int& no_arg,
-    char** arguments,
+    const string& command_line,
     BamTools::BamReader* reader,
     BamTools::BamWriter* writer) {
   
@@ -65,10 +46,7 @@ bool OpenBams(
     if (pos2 != string::npos) header.replace(pos2, 13, "SO:unsorted");
   }
   header += "@PG\tID:tangram_bam\tCL:";
-  for (int i = 0; i < no_arg; ++i) {
-    header += arguments[i];
-  }
-  header += "\n";
+  header += (command_line + '\n');
   BamTools::RefVector ref = reader->GetReferenceData();
 
   if (!writer->Open(outfilename, header, ref)) {
@@ -87,18 +65,19 @@ inline bool LoadReference(const char* fa, FastaReference* fasta) {
   return true;
 }
 
-bool BuildAligner(
+bool ConcatenateSpecialReference(
     FastaReference* fasta, 
-    vector<StripedSmithWaterman::Aligner*>* aligners,
-    vector<string>* ref_names) {
+    SpecialReference* s_ref) {
+  int total_len = 0;
   for (vector<string>::const_iterator ite = fasta->index->sequenceNames.begin();
        ite != fasta->index->sequenceNames.end(); ++ite) {
-    StripedSmithWaterman::Aligner* al_ptr = new StripedSmithWaterman::Aligner;
-    al_ptr->SetReferenceSequence(fasta->getSequence(*ite).c_str(), 
-                                 fasta->sequenceLength(*ite));
-    aligners->push_back(al_ptr);
-    ref_names->push_back(*ite);
+    s_ref->concatnated += fasta->getSequence(*ite).c_str();
+    s_ref->ref_lens.push_back(fasta->sequenceLength(*ite));
+    s_ref->ref_names.push_back(*ite);
+    total_len += fasta->sequenceLength(*ite);
   }
+
+  s_ref->concatnated_len = total_len;
 
   return true;
 }
@@ -119,29 +98,11 @@ void GetReverseComplement(const string& query, string* reverse) {
 
 void Align(
     const string& query,
-    const vector<StripedSmithWaterman::Aligner*>& aligners,
-    vector<StripedSmithWaterman::Alignment>* alignments) {
-  for (unsigned int i = 0; i < aligners.size(); ++i) {
-    (*alignments)[i].Clear();
-    aligners[i]->Align(query.c_str(), kFilter, &((*alignments)[i]));
-  }
-}
-
-int PickBestAlignment(
-    const int& request_score,
-    const vector<StripedSmithWaterman::Alignment>& alignments) {
-  
-  int sw_score_max = INT_MIN;
-  int index = 0;
-  for (unsigned int i = 0; i < alignments.size(); ++i) {
-    if (alignments[i].sw_score > sw_score_max) {
-      sw_score_max = alignments[i].sw_score;
-      index = i;
-    }
-  }
-
-  if (sw_score_max > request_score) return index;
-  else return -1;
+    const StripedSmithWaterman::Aligner& aligner,
+    StripedSmithWaterman::Alignment* alignment) {
+    
+    alignment->Clear();
+    aligner.Align(query.c_str(), kFilter, alignment);
 }
 
 void GetZa(const Alignment& al, const Alignment& mate, string* za) {
@@ -175,54 +136,91 @@ void GetZa(const Alignment& al, const Alignment& mate, string* za) {
 }
 
 void WriteAlignment(
+    const bool& add_za,
     const Alignment& mate,
     Alignment* al,
     BamTools::BamWriter* writer) {
-  string za;
-  GetZa(*al, mate, &za);
-
-  al->bam_alignment.AddTag("ZA","Z",za);
+  
+  if (add_za) {
+    string za;
+    GetZa(*al, mate, &za);
+    al->bam_alignment.AddTag("ZA","Z",za);
+  }
 
   writer->SaveAlignment(al->bam_alignment);
 }
 
-void WriteAlignment(map<string, Alignment>* al_map_ite, 
+void WriteAlignment(const bool& add_za,
+                    map<string, Alignment>* al_map_ite, 
                     BamTools::BamWriter* writer) {
+		    
   for (map<string, Alignment>::iterator ite = al_map_ite->begin();
        ite != al_map_ite->end(); ++ite) {
     Alignment* al = &(ite->second);
-    string za;
-    if (al->bam_alignment.IsPaired()) {
-      if (al->bam_alignment.IsFirstMate()) {
+    if (add_za) {
+      string za;
+      if (al->bam_alignment.IsPaired()) { // paired-end read
+        if (al->bam_alignment.IsFirstMate()) {
+          za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+               + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
+	       + "<&;0;;;0;;>";
+        } else {
+          za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+               + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+        }
+      } else { // sinle-end read
         za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
-             + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
-	     + "<&;;;;;;>";
-      } else {
-        za = "<&;;;;;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
              + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
       }
-    } else {
-      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
-           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+
+      al->bam_alignment.AddTag("ZA","Z",za);
     }
 
-    al->bam_alignment.AddTag("ZA","Z",za);
     writer->SaveAlignment(al->bam_alignment);
   }
 }
 
+// Return true if an alignment contains too many soft clips
+inline bool IsTooManyClips (const BamTools::BamAlignment& al) {
+  if (al.CigarData.empty()) return true;
+
+  int clip = 0;
+  if ((al.CigarData.begin())->Type == 'S') clip += (al.CigarData.begin())->Length;
+  if ((al.CigarData.rbegin())->Type == 'S') clip += (al.CigarData.rbegin())->Length;
+
+  if (clip > (al.Length * kSoftClipRate)) return true;
+  else return false;
+}
+
+inline void MarkAsUnmapped (BamTools::BamAlignment* al, BamTools::BamAlignment* mate) {
+  const bool al_unmapped   = IsTooManyClips(*al);
+  const bool mate_unmapped = IsTooManyClips(*mate);
+
+  if (!al_unmapped && !mate_unmapped) {
+    // nothing
+  } else {
+    al->SetIsMapped(!al_unmapped);
+    mate->SetIsMapped(!mate_unmapped);
+    al->SetIsMateMapped(!mate_unmapped);
+    mate->SetIsMateMapped(!al_unmapped);
+  }
+}
+
 void StoreAlignment(
+    const bool& add_za,
     Alignment* al,
     map<string, Alignment> *al_map_cur,
     map<string, Alignment> *al_map_pre,
     BamTools::BamWriter* writer) {
+  // Clear up the buffers once the al_map_cur buffer is full
+  // 1. Clear up al_map_pre
+  // 2. move al_map_cur to al_map_pre
   if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
-    WriteAlignment(al_map_pre, writer);
+    WriteAlignment(add_za, al_map_pre, writer);
     al_map_pre->clear();
     map<string, Alignment> *tmp = al_map_pre;
     al_map_pre = al_map_cur;
     al_map_cur = tmp;
-
   }
 
   map<string, Alignment>::iterator ite_cur = al_map_cur->find(al->bam_alignment.Name);
@@ -232,75 +230,147 @@ void StoreAlignment(
       if (ite_pre == al_map_pre->end()) { // al is not found in cur or pre either
         (*al_map_cur)[al->bam_alignment.Name] = *al;
       } else { // find the mate in al_map_pre
-        WriteAlignment(ite_pre->second, al, writer);
-        WriteAlignment(*al, &(ite_pre->second), writer);
+        MarkAsUnmapped(&(al->bam_alignment), &(ite_pre->second.bam_alignment));
+	WriteAlignment(add_za, ite_pre->second, al, writer);
+        WriteAlignment(add_za, *al, &(ite_pre->second), writer);
         al_map_pre->erase(ite_pre);
       }
     } else { // al is not found in cur and pre is NULL
       (*al_map_cur)[al->bam_alignment.Name] = *al;
     }
   } else { // find the mate in al_map_cur
-    WriteAlignment(ite_cur->second, al, writer);
-    WriteAlignment(*al, &(ite_cur->second), writer);
+    MarkAsUnmapped(&(al->bam_alignment), &(ite_cur->second.bam_alignment));
+    WriteAlignment(add_za, ite_cur->second, al, writer);
+    WriteAlignment(add_za, *al, &(ite_cur->second), writer);
     al_map_cur->erase(ite_cur);
   }
     
 }
 
-int main(int argc, char** argv) {
-  if (argc != 4) {
+bool ParseArguments(const int argc, char* const * argv, Param* param) {
+  if (argc == 1) { // no argument
     ShowHelp();
-    return 1;
+    return false;
   }
 
+  // record command line
+  param->command_line = argv[0];
+  for ( int i = 1; i < argc; ++i ) {
+    param->command_line += " ";
+    param->command_line += argv[i];
+  }
+
+  const char *short_option = "hi:o:r:z";
+  const struct option long_option[] = {
+    {"help", no_argument, NULL, 'h'},
+    {"input", required_argument, NULL, 'i'},
+    {"output", required_argument, NULL, 'o'},
+    {"ref", required_argument, NULL, 'r'},
+    {"no-za-add", no_argument, NULL, 'z'},
+
+    {0, 0, 0, 0}
+  };
+
+  int c = 0;
+  bool show_help = false;
+  while (true) {
+    int option_index = 0;
+    c = getopt_long(argc, argv, short_option, long_option, &option_index);
+
+    if (c == -1) // end of options
+      break;
+
+    switch (c) {
+      case 'h': show_help = true; break;
+      case 'i': param->in_bam = optarg; break;
+      case 'o': param->out_bam = optarg; break;
+      case 'r': param->ref_fasta = optarg; break;
+      case 'z': param->za_add = false; break;
+    }
+  }
+
+  if (show_help || param->in_bam.empty() 
+   || param->out_bam.empty() || param->ref_fasta.empty()) {
+    ShowHelp();
+    return false;
+  }
+
+  return true;
+}
+
+int PickBestAlignment(const int& request_score, 
+                      const StripedSmithWaterman::Alignment& alignment, 
+		      const SpecialReference& s_ref) {
+  if (alignment.sw_score < request_score) {
+    return -1; // no proper alignment is found
+  } else {
+    int accu_len = 0;
+    for (unsigned int i = 0; i < s_ref.ref_lens.size(); ++i) {
+      accu_len += s_ref.ref_lens[i];
+      if (alignment.ref_begin < accu_len) {
+        if (alignment.ref_end < accu_len) return i;
+	else return -1;
+      }
+    }
+  }
+
+  return -1;
+}
+
+int main(int argc, char** argv) {
+  Param param;
+  
+  if (!ParseArguments(argc, argv, &param)) return 1;
+
   // Open input bam
-  string infilename = argv[1];
-  string outfilename = argv[3];
+  string infilename = param.in_bam;
+  string outfilename = param.out_bam;
   BamTools::BamReader reader;
   BamTools::BamWriter writer;
-  if (!OpenBams(infilename, outfilename, argc, argv, &reader, &writer)) return 1;
+  if (!OpenBams(infilename, outfilename, param.command_line, &reader, &writer)) return 1;
 
   // Open fasta
   FastaReference fasta;
-  LoadReference(argv[2], &fasta);
+  LoadReference(param.ref_fasta.c_str(), &fasta);
 
   // Build SSW aligners for every reference in fasta
-  vector<StripedSmithWaterman::Aligner*> aligners;
-  vector<string> ref_names;
-  BuildAligner(&fasta, &aligners, &ref_names);
+  SpecialReference s_ref;
+  ConcatenateSpecialReference(&fasta, &s_ref);
 
-  // Prepare alignment vector
-  vector<StripedSmithWaterman::Alignment> alignments(aligners.size());
+  // Build SSW aligner
+  StripedSmithWaterman::Aligner aligner;
+  aligner.SetReferenceSequence(s_ref.concatnated.c_str(), s_ref.concatnated_len);
 
   // CORE ALGORITHM
   BamTools::BamAlignment bam_alignment;
   map<string, Alignment> al_map1, al_map2;
   map<string, Alignment> *al_map_cur = &al_map1, *al_map_pre = &al_map2;
+  StripedSmithWaterman::Alignment alignment;
   Alignment al;
   while (reader.GetNextAlignment(bam_alignment)) {
-    Align(bam_alignment.QueryBases, aligners, &alignments);
-    int index = PickBestAlignment(bam_alignment.Length, alignments);
-    if (index == -1) {
-      string reverse;
-      GetReverseComplement(bam_alignment.QueryBases, &reverse);
-      Align(reverse, aligners, &alignments);
-      index = PickBestAlignment(bam_alignment.Length, alignments);
+    int index = -1;
+    if (param.za_add) {
+      Align(bam_alignment.QueryBases, aligner, &alignment);
+      index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+      if (index == -1) { // try the reverse complement sequences
+        string reverse;
+        GetReverseComplement(bam_alignment.QueryBases, &reverse);
+        Align(reverse, aligner, &alignment);
+        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+      }
     }
     al.Clear();
     al.bam_alignment = bam_alignment;
     al.hit_insertion = (index == -1) ? false: true;
-    al.ins_prefix    = (index == -1) ? "" : ref_names[index].substr(8,2);
-    StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
+    al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+    StoreAlignment(param.za_add, &al, al_map_cur, al_map_pre, &writer);
   }
 
   // Close
-  WriteAlignment(&al_map1, &writer);
-  WriteAlignment(&al_map2, &writer);
+  WriteAlignment(param.za_add, &al_map1, &writer);
+  WriteAlignment(param.za_add, &al_map2, &writer);
   al_map1.clear();
   al_map2.clear();
   reader.Close();
   writer.Close();
-  for (vector<StripedSmithWaterman::Aligner*>::iterator ite = aligners.begin();
-       ite != aligners.end(); ++ite)
-    free(*ite);
 }
