@@ -317,6 +317,15 @@ int PickBestAlignment(const int& request_score,
   return -1;
 }
 
+bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
+  if (!al.IsMapped()) return true;
+  if (al.RefID != al.MateRefID) return true;
+  if (al.CigarData.size() > 5) return true;
+  if (IsTooManyClips(al)) return true;
+
+  return false;
+}
+
 int main(int argc, char** argv) {
   Param param;
   
@@ -328,6 +337,8 @@ int main(int argc, char** argv) {
   BamTools::BamReader reader;
   BamTools::BamWriter writer;
   if (!OpenBams(infilename, outfilename, param.command_line, &reader, &writer)) return 1;
+
+  // Get the ID of target chromosome
 
   // Open fasta
   FastaReference fasta;
@@ -349,7 +360,7 @@ int main(int argc, char** argv) {
   Alignment al;
   while (reader.GetNextAlignment(bam_alignment)) {
     int index = -1;
-    if (param.za_add) {
+    if (param.za_add && IsProblematicAlignment(bam_alignment)) {
       Align(bam_alignment.QueryBases, aligner, &alignment);
       index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
       if (index == -1) { // try the reverse complement sequences
