@@ -136,45 +136,62 @@ void GetZa(const Alignment& al, const Alignment& mate, string* za) {
 }
 
 void WriteAlignment(
-    const bool& add_za,
     const Alignment& mate,
     Alignment* al,
     BamTools::BamWriter* writer) {
   
-  if (add_za) {
-    string za;
-    GetZa(*al, mate, &za);
-    al->bam_alignment.AddTag("ZA","Z",za);
-  }
+  string za;
+  GetZa(*al, mate, &za);
+  al->bam_alignment.AddTag("ZA","Z",za);
 
   writer->SaveAlignment(al->bam_alignment);
 }
 
-void WriteAlignment(const bool& add_za,
-                    map<string, Alignment>* al_map_ite, 
+void WriteAlignment(
+    Alignment* al,
+    BamTools::BamWriter* writer) {
+  
+    string za;
+    if (al->bam_alignment.IsPaired()) { // paired-end read
+      if (al->bam_alignment.IsFirstMate()) {
+        za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
+           + "<&;0;;;0;;>";
+      } else {
+        za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+             + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+      }
+    } else { // sinle-end read
+      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
+    }
+
+    al->bam_alignment.AddTag("ZA","Z",za);
+    writer->SaveAlignment(al->bam_alignment);
+}
+
+void WriteAlignment(map<string, Alignment>* al_map_ite, 
                     BamTools::BamWriter* writer) {
 		    
   for (map<string, Alignment>::iterator ite = al_map_ite->begin();
        ite != al_map_ite->end(); ++ite) {
     Alignment* al = &(ite->second);
-    if (add_za) {
-      string za;
-      if (al->bam_alignment.IsPaired()) { // paired-end read
-        if (al->bam_alignment.IsFirstMate()) {
-          za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
-               + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
-	       + "<&;0;;;0;;>";
-        } else {
-          za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
-               + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
-        }
-      } else { // sinle-end read
+    string za;
+    if (al->bam_alignment.IsPaired()) { // paired-end read
+      if (al->bam_alignment.IsFirstMate()) {
         za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
+           + "<&;0;;;0;;>";
+      } else {
+        za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
              + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
       }
-
-      al->bam_alignment.AddTag("ZA","Z",za);
+    } else { // sinle-end read
+      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+           + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
     }
+
+    al->bam_alignment.AddTag("ZA","Z",za);
 
     writer->SaveAlignment(al->bam_alignment);
   }
@@ -207,7 +224,20 @@ inline void MarkAsUnmapped (BamTools::BamAlignment* al, BamTools::BamAlignment* 
 }
 
 void StoreAlignment(
-    const bool& add_za,
+    Alignment* al,
+    vector<map<string, Alignment> > *al_maps,
+    BamTools::BamWriter* writer) {
+  int ref_id = al->bam_alignment.RefID;
+  map<string, Alignment>* al_map = &((*al_maps)[ref_id]);
+  map<string, Alignment>::iterator ite = al_map->find(al->bam_alignment.Name);
+  if (ite == al_map->end()) { // cannot find the mate in the map
+    WriteAlignment(al, writer);
+  } else {
+    WriteAlignment(ite->second, al, writer);
+  }
+}
+
+void StoreAlignment(
     Alignment* al,
     map<string, Alignment> *al_map_cur,
     map<string, Alignment> *al_map_pre,
@@ -216,7 +246,7 @@ void StoreAlignment(
   // 1. Clear up al_map_pre
   // 2. move al_map_cur to al_map_pre
   if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
-    WriteAlignment(add_za, al_map_pre, writer);
+    WriteAlignment(al_map_pre, writer);
     al_map_pre->clear();
     map<string, Alignment> *tmp = al_map_pre;
     al_map_pre = al_map_cur;
@@ -231,8 +261,8 @@ void StoreAlignment(
         (*al_map_cur)[al->bam_alignment.Name] = *al;
       } else { // find the mate in al_map_pre
         MarkAsUnmapped(&(al->bam_alignment), &(ite_pre->second.bam_alignment));
-	WriteAlignment(add_za, ite_pre->second, al, writer);
-        WriteAlignment(add_za, *al, &(ite_pre->second), writer);
+	WriteAlignment(ite_pre->second, al, writer);
+        WriteAlignment(*al, &(ite_pre->second), writer);
         al_map_pre->erase(ite_pre);
       }
     } else { // al is not found in cur and pre is NULL
@@ -240,8 +270,8 @@ void StoreAlignment(
     }
   } else { // find the mate in al_map_cur
     MarkAsUnmapped(&(al->bam_alignment), &(ite_cur->second.bam_alignment));
-    WriteAlignment(add_za, ite_cur->second, al, writer);
-    WriteAlignment(add_za, *al, &(ite_cur->second), writer);
+    WriteAlignment(ite_cur->second, al, writer);
+    WriteAlignment(*al, &(ite_cur->second), writer);
     al_map_cur->erase(ite_cur);
   }
     
@@ -317,13 +347,20 @@ int PickBestAlignment(const int& request_score,
   return -1;
 }
 
-bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
+inline bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
   if (!al.IsMapped()) return true;
   if (al.RefID != al.MateRefID) return true;
   if (al.CigarData.size() > 5) return true;
   if (IsTooManyClips(al)) return true;
 
   return false;
+}
+
+inline void StoreInBuffer(
+    Alignment* al,
+    vector<map<string, Alignment> >* al_maps) {
+  int ref_id = al->bam_alignment.RefID;
+  ((*al_maps)[ref_id])[al->bam_alignment.Name] = *al;
 }
 
 int main(int argc, char** argv) {
@@ -339,6 +376,11 @@ int main(int argc, char** argv) {
   if (!OpenBams(infilename, outfilename, param.command_line, &reader, &writer)) return 1;
 
   // Get the ID of target chromosome
+  int target_ref_id = -1;
+  vector<map<string, Alignment> > al_maps(reader.GetReferenceCount());
+  if (!param.target_ref_name.empty()) {
+    target_ref_id = reader.GetReferenceID(param.target_ref_name);
+  }
 
   // Open fasta
   FastaReference fasta;
@@ -358,28 +400,43 @@ int main(int argc, char** argv) {
   map<string, Alignment> *al_map_cur = &al_map1, *al_map_pre = &al_map2;
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
+  int current_ref_id = -1;
   while (reader.GetNextAlignment(bam_alignment)) {
-    int index = -1;
-    if (param.za_add && IsProblematicAlignment(bam_alignment)) {
-      Align(bam_alignment.QueryBases, aligner, &alignment);
-      index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
-      if (index == -1) { // try the reverse complement sequences
-        string reverse;
-        GetReverseComplement(bam_alignment.QueryBases, &reverse);
-        Align(reverse, aligner, &alignment);
+    if ((target_ref_id != -1) 
+       && ((bam_alignment.RefID == target_ref_id) || (bam_alignment.MateRefID == target_ref_id))) {
+      int index = -1;
+      if (IsProblematicAlignment(bam_alignment)) {
+        Align(bam_alignment.QueryBases, aligner, &alignment);
         index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        if (index == -1) { // try the reverse complement sequences
+          string reverse;
+          GetReverseComplement(bam_alignment.QueryBases, &reverse);
+          Align(reverse, aligner, &alignment);
+          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        }
+      }
+      al.Clear();
+      al.bam_alignment = bam_alignment;
+      al.hit_insertion = (index == -1) ? false: true;
+      al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+      if (bam_alignment.RefID == target_ref_id) {
+        if (!bam_alignment.IsPaired()) {
+	  WriteAlignment(&al, &writer);
+	} else { //bam_alignment.IsPaired
+	  if (bam_alignment.RefID == bam_alignment.MateRefID)
+	    StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
+	  else
+	    StoreAlignment(&al, &al_maps, &writer);
+	}
+      } else { // bam_alignment.MateRefID == target_ref_id
+        StoreInBuffer(&al, &al_maps);
       }
     }
-    al.Clear();
-    al.bam_alignment = bam_alignment;
-    al.hit_insertion = (index == -1) ? false: true;
-    al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
-    StoreAlignment(param.za_add, &al, al_map_cur, al_map_pre, &writer);
   }
 
   // Close
-  WriteAlignment(param.za_add, &al_map1, &writer);
-  WriteAlignment(param.za_add, &al_map2, &writer);
+  WriteAlignment(&al_map1, &writer);
+  WriteAlignment(&al_map2, &writer);
   al_map1.clear();
   al_map2.clear();
   reader.Close();
