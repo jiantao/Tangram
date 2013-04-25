@@ -234,6 +234,7 @@ void StoreAlignment(
     WriteAlignment(al, writer);
   } else {
     WriteAlignment(ite->second, al, writer);
+    al_map->erase(ite);
   }
 }
 
@@ -431,7 +432,7 @@ int main(int argc, char** argv) {
       } else { // bam_alignment.MateRefID == target_ref_id
         StoreInBuffer(&al, &al_maps);
       }
-    }
+    } // end if
   }
 
   // Close
