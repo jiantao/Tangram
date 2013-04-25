@@ -521,8 +521,8 @@ void Parameters::ShowHelp(void) const
     printf("Notes:\n\n");
 
     printf("  1. A region should be presented in one of the following formats:\n\
-    `1', `2:1000' and `X:1000-2000' (1-based). When a region is specified,\n\
-    the input alignment file must be an indexed BAM file.\n\n");
+     `1', `2:1000' and `X:1000-2000' (1-based). When a region is specified,\n\
+     the input alignment file must be an indexed BAM file.\n\n");
 
     printf("  2. Detection set is a bit set to indicate which types of SV will be detected.\n");
     printf("     Each bit in this bit set corresponding to a type of SV event:\n\n");
@@ -536,10 +536,8 @@ void Parameters::ShowHelp(void) const
     printf("     or hexadecimal (start with `0x') number for input.\n\n");
 
     printf("  3. The parameters for the binominal distribution are used to calculate the genotype likelihood.\n");
-    printf("     This string should contain 3 float numbers (for homozygous reference, heterozygous and homozygous alternatives)\n"
-                 "and is separated by comma, such \"0.001,0.5,0.999\".\n");
-
-    printf("     thresholds (-rpf -srf) this locus will not be submitted for genotyping.\n");
+    printf("     This string should contain 3 float numbers (for homozygous reference, heterozygous and homozygous alternatives)\n");
+    printf("     and is separated by comma, such \"0.001,0.5,0.999\".\n\n");
 
     printf("  4. Minimum number of supporting read-pair or split-read fragments are the thresholds to trigger genotype module.\n");
     printf("     For a given locus, if the number of both read-pair AND split-read supporting fragments are lower than the\n");
