@@ -398,7 +398,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("chr%s\t"
+        printf("%s\t"
                "%d\t"
                ".\t"
                "%c\t"
