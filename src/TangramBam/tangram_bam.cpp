@@ -385,25 +385,26 @@ void LoadAlignmentsNotInTargetChr(
   BamTools::BamRegion region1, region2;
   bool has_region1 = false, has_region2 = false;
 
-  const RefVector& references = reader->GetReferenceData();
+  const BamTools::RefVector& references = reader->GetReferenceData();
 
   // the target region is not the first chromosome
   if (target_ref_id != 0) {
-    const RefData& ref_data = references.at(target_ref_id - 1);
+    const BamTools::RefData& ref_data = references.at(target_ref_id - 1);
     region1.LeftRefID     = 0;
-    region1.leftPosition  = 0;
+    region1.LeftPosition  = 0;
     region1.RightRefID    = target_ref_id - 1;
-    region1.rightPosition = ref_data.RefLength;
+    region1.RightPosition = ref_data.RefLength;
     has_region1 = true;
   }
 
   // the target region is not the last chromosome
   if (target_ref_id != reader->GetReferenceCount() - 1) {
-    const RefData& ref_data = references.at(reader->GetReferenceCount() - 1);
+    const BamTools::RefData& ref_data = 
+          references.at(reader->GetReferenceCount() - 1);
     region2.LeftRefID     = target_ref_id + 1;
-    region2.leftPosition  = 0;
+    region2.LeftPosition  = 0;
     region2.RightRefID    = reader->GetReferenceCount() - 1;
-    region2.rightPosition = ref_data.RefLength;
+    region2.RightPosition = ref_data.RefLength;
     has_region2 = true;
   }
 
@@ -505,7 +506,6 @@ int main(int argc, char** argv) {
   map<string, Alignment> *al_map_cur = &al_map1, *al_map_pre = &al_map2;
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
-  int current_ref_id = -1;
   
   // Load alignments sitting in other chromosomes and their mates are in the target chr
   if (target_ref_id != -1) {
@@ -516,7 +516,9 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Warning: %s has been created.\n", indexfilename.c_str());
     }
     LoadAlignmentsNotInTargetChr(target_ref_id, aligner, s_ref, &reader, &al_maps);
-    reader.SetRegion(target_ref_id, 0, target_ref_id, -1);
+    const BamTools::RefVector& references = reader.GetReferenceData();
+    const BamTools::RefData& ref_data = references.at(target_ref_id);
+    reader.SetRegion(target_ref_id, 0, target_ref_id, ref_data.RefLength);
   }
 
   while (reader.GetNextAlignment(bam_alignment)) {
