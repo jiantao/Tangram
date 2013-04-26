@@ -227,7 +227,7 @@ void StoreAlignment(
     Alignment* al,
     vector<map<string, Alignment> > *al_maps,
     BamTools::BamWriter* writer) {
-  int ref_id = al->bam_alignment.RefID;
+  int ref_id = al->bam_alignment.MateRefID;
   map<string, Alignment>* al_map = &((*al_maps)[ref_id]);
   map<string, Alignment>::iterator ite = al_map->find(al->bam_alignment.Name);
   if (ite == al_map->end()) { // cannot find the mate in the map
@@ -332,12 +332,23 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
 int PickBestAlignment(const int& request_score, 
                       const StripedSmithWaterman::Alignment& alignment, 
 		      const SpecialReference& s_ref) {
+#ifdef TB_VERBOSE_DEBUG
+  fprintf(stderr, "SSW score: %d, request_score: %d\n", alignment.sw_score, request_score);
+  fprintf(stderr, "SSW ref_begin: %d, ref_end: %d\n", alignment.ref_begin, alignment.ref_end);
+  fprintf(stderr, "cigar: %s\n", alignment.cigar_string.c_str());
+#endif
   if (alignment.sw_score < request_score) {
     return -1; // no proper alignment is found
   } else {
     int accu_len = 0;
+#ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "accu_len:");
+#endif
     for (unsigned int i = 0; i < s_ref.ref_lens.size(); ++i) {
       accu_len += s_ref.ref_lens[i];
+#ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "\t%d: %d\n", i, accu_len);
+#endif
       if (alignment.ref_begin < accu_len) {
         if (alignment.ref_end < accu_len) return i;
 	else return -1;
@@ -403,6 +414,9 @@ int main(int argc, char** argv) {
   Alignment al;
   int current_ref_id = -1;
   while (reader.GetNextAlignment(bam_alignment)) {
+#ifdef TB_VERBOSE_DEBUG
+    fprintf(stderr, "%s\n%s\n", bam_alignment.Name.c_str(), bam_alignment.QueryBases.c_str());
+#endif
     if ((target_ref_id != -1) 
        && ((bam_alignment.RefID == target_ref_id) || (bam_alignment.MateRefID == target_ref_id))) {
       int index = -1;
@@ -412,10 +426,16 @@ int main(int argc, char** argv) {
         if (index == -1) { // try the reverse complement sequences
           string reverse;
           GetReverseComplement(bam_alignment.QueryBases, &reverse);
+#ifdef TB_VERBOSE_DEBUG
+     fprintf(stderr, "%s\n", reverse.c_str());
+#endif
           Align(reverse, aligner, &alignment);
           index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         }
       }
+#ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
+#endif
       al.Clear();
       al.bam_alignment = bam_alignment;
       al.hit_insertion = (index == -1) ? false: true;
