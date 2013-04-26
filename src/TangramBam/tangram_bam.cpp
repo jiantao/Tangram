@@ -375,6 +375,90 @@ inline void StoreInBuffer(
   ((*al_maps)[ref_id])[al->bam_alignment.Name] = *al;
 }
 
+void LoadAlignmentsNotInTargetChr(
+    const int& target_ref_id,
+    const StripedSmithWaterman::Aligner& aligner,
+    const SpecialReference& s_ref,
+    BamTools::BamReader* reader,
+    vector<map<string, Alignment> >* al_maps) {
+  BamTools::BamRegion region1, region2;
+  bool has_region1 = false, has_region2 = false;
+
+  // the target region is not the first chromosome
+  if (target_ref_id != 0) {
+    region1.LeftRefID  = 0;
+    region1.RightRefID = target_ref_id - 1;
+    has_region1 = true;
+  }
+
+  // the target region is not the last chromosome
+  if (target_ref_id != reader->GetReferenceCount() - 1) {
+    region2.LeftRefID  = target_ref_id + 1;
+    region1.RightRefID = reader->GetReferenceCount() - 1;
+    has_region2 = true;
+  }
+
+  BamTools::BamAlignment bam_alignment;
+  StripedSmithWaterman::Alignment alignment;
+  Alignment al;
+
+  // Load alignments in region1
+  if (has_region1 && reader->SetRegion(region1)) {
+    while (reader->GetNextAlignment(bam_alignment)) {
+      int index = -1;
+      if (bam_alignment.MateRefID == target_ref_id) {
+        Align(bam_alignment.QueryBases, aligner, &alignment);
+        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        if (index == -1) { // try the reverse complement sequences
+          string reverse;
+          GetReverseComplement(bam_alignment.QueryBases, &reverse);
+          #ifdef TB_VERBOSE_DEBUG
+          fprintf(stderr, "%s\n", reverse.c_str());
+          #endif
+          Align(reverse, aligner, &alignment);
+          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        } // end if (index == -1)
+      } // end if
+      #ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
+      #endif
+      al.Clear();
+      al.bam_alignment = bam_alignment;
+      al.hit_insertion = (index == -1) ? false: true;
+      al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+      StoreInBuffer(&al, al_maps);
+    }
+  }
+
+  // Load alignments in region2
+  if (has_region2&& reader->SetRegion(region2)) {
+    while (reader->GetNextAlignment(bam_alignment)) {
+      int index = -1;
+      if (bam_alignment.MateRefID == target_ref_id) {
+        Align(bam_alignment.QueryBases, aligner, &alignment);
+        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        if (index == -1) { // try the reverse complement sequences
+          string reverse;
+          GetReverseComplement(bam_alignment.QueryBases, &reverse);
+          #ifdef TB_VERBOSE_DEBUG
+          fprintf(stderr, "%s\n", reverse.c_str());
+          #endif
+          Align(reverse, aligner, &alignment);
+          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        } // end if (index == -1)
+      }
+      #ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
+      #endif
+      al.Clear();
+      al.bam_alignment = bam_alignment;
+      al.hit_insertion = (index == -1) ? false: true;
+      al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+      StoreInBuffer(&al, al_maps);
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   Param param;
   
@@ -413,44 +497,54 @@ int main(int argc, char** argv) {
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
   int current_ref_id = -1;
+  
+  // Load alignments sitting in other chromosomes and their mates are in the target chr
+  if (target_ref_id != -1) {
+    string indexfilename = infilename + ".bai";
+    if (!reader.OpenIndex(indexfilename)) {
+      fprintf(stderr, "Warning: Cannot open the bam index file so creating it......\n");
+      reader.CreateIndex();
+      fprintf(stderr, "Warning: %s has been created.\n", indexfilename.c_str());
+    }
+    LoadAlignmentsNotInTargetChr(target_ref_id, aligner, s_ref, &reader, &al_maps);
+    reader.SetRegion(target_ref_id, 0, target_ref_id, -1);
+  }
+
   while (reader.GetNextAlignment(bam_alignment)) {
-#ifdef TB_VERBOSE_DEBUG
+    #ifdef TB_VERBOSE_DEBUG
     fprintf(stderr, "%s\n%s\n", bam_alignment.Name.c_str(), bam_alignment.QueryBases.c_str());
-#endif
-    if ((target_ref_id != -1) 
-       && ((bam_alignment.RefID == target_ref_id) || (bam_alignment.MateRefID == target_ref_id))) {
-      int index = -1;
-      if (IsProblematicAlignment(bam_alignment)) {
-        Align(bam_alignment.QueryBases, aligner, &alignment);
+    #endif
+    int index = -1;
+    if (IsProblematicAlignment(bam_alignment)) {
+      Align(bam_alignment.QueryBases, aligner, &alignment);
+      index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+      if (index == -1) { // try the reverse complement sequences
+        string reverse;
+        GetReverseComplement(bam_alignment.QueryBases, &reverse);
+        #ifdef TB_VERBOSE_DEBUG
+        fprintf(stderr, "%s\n", reverse.c_str());
+        #endif
+        Align(reverse, aligner, &alignment);
         index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
-        if (index == -1) { // try the reverse complement sequences
-          string reverse;
-          GetReverseComplement(bam_alignment.QueryBases, &reverse);
-#ifdef TB_VERBOSE_DEBUG
-     fprintf(stderr, "%s\n", reverse.c_str());
-#endif
-          Align(reverse, aligner, &alignment);
-          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
-        }
       }
-#ifdef TB_VERBOSE_DEBUG
-      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
-#endif
-      al.Clear();
-      al.bam_alignment = bam_alignment;
-      al.hit_insertion = (index == -1) ? false: true;
-      al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
-      if (bam_alignment.RefID == target_ref_id) {
-        if (!bam_alignment.IsPaired()) {
-	  WriteAlignment(&al, &writer);
-	} else { //bam_alignment.IsPaired
-	  if (bam_alignment.RefID == bam_alignment.MateRefID)
-	    StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
-	  else
-	    StoreAlignment(&al, &al_maps, &writer);
-	}
-      } else { // bam_alignment.MateRefID == target_ref_id
-        StoreInBuffer(&al, &al_maps);
+    }
+      
+    #ifdef TB_VERBOSE_DEBUG
+    fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
+    #endif
+
+    al.Clear();
+    al.bam_alignment = bam_alignment;
+    al.hit_insertion = (index == -1) ? false: true;
+    al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+    if (bam_alignment.RefID == target_ref_id) {
+      if (!bam_alignment.IsPaired()) {
+        WriteAlignment(&al, &writer);
+      } else { //bam_alignment.IsPaired
+        if (bam_alignment.RefID == bam_alignment.MateRefID)
+	  StoreAlignment(&al, al_map_cur, al_map_pre, &writer);
+	else
+	  StoreAlignment(&al, &al_maps, &writer);
       }
     } // end if
   }
