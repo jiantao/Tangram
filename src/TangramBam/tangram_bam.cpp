@@ -381,20 +381,29 @@ void LoadAlignmentsNotInTargetChr(
     const SpecialReference& s_ref,
     BamTools::BamReader* reader,
     vector<map<string, Alignment> >* al_maps) {
+  
   BamTools::BamRegion region1, region2;
   bool has_region1 = false, has_region2 = false;
 
+  const RefVector& references = reader->GetReferenceData();
+
   // the target region is not the first chromosome
   if (target_ref_id != 0) {
-    region1.LeftRefID  = 0;
-    region1.RightRefID = target_ref_id - 1;
+    const RefData& ref_data = references.at(target_ref_id - 1);
+    region1.LeftRefID     = 0;
+    region1.leftPosition  = 0;
+    region1.RightRefID    = target_ref_id - 1;
+    region1.rightPosition = ref_data.RefLength;
     has_region1 = true;
   }
 
   // the target region is not the last chromosome
   if (target_ref_id != reader->GetReferenceCount() - 1) {
-    region2.LeftRefID  = target_ref_id + 1;
-    region1.RightRefID = reader->GetReferenceCount() - 1;
+    const RefData& ref_data = references.at(reader->GetReferenceCount() - 1);
+    region2.LeftRefID     = target_ref_id + 1;
+    region2.leftPosition  = 0;
+    region2.RightRefID    = reader->GetReferenceCount() - 1;
+    region2.rightPosition = ref_data.RefLength;
     has_region2 = true;
   }
 
