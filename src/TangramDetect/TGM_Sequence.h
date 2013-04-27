@@ -129,11 +129,9 @@ static inline void SeqToString(std::string& seqStr, const int8_t* pSeq, unsigned
 static inline void ReverseSeqToString(std::string& seqStr, const int8_t* pSeq, unsigned int seqLen)
 {
     seqStr.clear();
-    int8_t *ptr = pSeq + seqLen - 1;
-    for (int i = seqLen; i > 0; --i)
+    for (int i = seqLen - 1; i >= 0; --i)
     {
-        seqStr += char_table[rc_table[ptr[i]]];
-	--ptr;
+        seqStr += char_table[rc_table[pSeq[i]]];
     }
 }
 

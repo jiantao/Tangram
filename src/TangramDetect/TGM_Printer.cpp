@@ -375,10 +375,21 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     SetSpecialFeatures(element);
 
     int insertedLen = -1;
+    string insertedSeq;
     if (element.pSplitEvent != NULL)
     {
         if (element.pSplitEvent->pSpecialData->end >= 0 && element.pSplitEvent->pSpecialData->pos >=0) {
             insertedLen = element.pSplitEvent->pSpecialData->end - element.pSplitEvent->pSpecialData->pos + 1;
+	    int concatenated_pos = pRef->GetSpRefConcatenatedPos(
+	                             element.pSplitEvent->pSpecialData->spRefID, 
+	                             element.pSplitEvent->pSpecialData->pos);
+            const int8_t *sr_seq_ptr = pRef->spRefSeq.GetPointer(concatenated_pos);
+	    if (sr_seq_ptr != NULL) {
+              if (features.strand == '-')  
+	        ReverseSeqToString(insertedSeq, sr_seq_ptr, insertedLen);
+              else
+	        SeqToString(insertedSeq, sr_seq_ptr, insertedLen);
+	    }
 	}
     }
 
@@ -408,19 +419,28 @@ void Printer::PrintSpecial(const PrintElmnt& element)
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("%s\t"
+        string alt;
+	if (insertedSeq.empty()) {
+	  alt = "<INS:ME:";
+	  alt += features.spRefName;
+	  alt += ">";
+	} else {
+	  alt = refChar;
+	  alt += insertedSeq;
+	}
+	printf("%s\t"
                "%d\t"
                ".\t"
                "%c\t"
-               "<INS:ME:%s>\t"
+               "%s\t"
                ".\t"
                ".\t"
                "%s%s",
                features.anchorName,
                features.pos + 1,
                refChar,
-               features.spRefName,
-               splitFrag > 0 ? "" : "IMPRECISE;",
+               alt.c_str(),
+	       splitFrag > 0 ? "" : "IMPRECISE;",
                formatted.str().c_str()
               );
 	#ifdef TD_VERBOSE_DEBUG
@@ -434,18 +454,27 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "%s\t"
+        string alt;
+	if (alt.empty()) {
+	  alt = "<INS:ME:";
+	  alt += features.spRefName;
+	  alt += ">";
+	} else {
+	  alt = refChar;
+	  alt += insertedSeq;
+	}
+	fprintf(outputGrp.fpSpecial, "%s\t"
                "%d\t"
                ".\t"
                "%c\t"
-               "<INS:ME:%s>\t"
+               "%s\t"
                ".\t"
                ".\t"
                "%s%s",
                features.anchorName,
                features.pos + 1,
-               refChar,
-               features.spRefName,
+	       refChar,
+	       alt.c_str(),
                splitFrag > 0 ? "" : "IMPRECISE;",
                formatted.str().c_str()
               );
@@ -453,9 +482,9 @@ void Printer::PrintSpecial(const PrintElmnt& element)
 	if (element.pSplitEvent != NULL)
 	  fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
 	                element.pSplitEvent->pSpecialData->spRefID,
-			element.pSplitEvent->pSpecialData->familyID : 0,
-			element.pSplitEvent->pSpecialData->pos : 0,
-			element.pSplitEvent->pSpecialData->end : 0);
+			element.pSplitEvent->pSpecialData->familyID,
+			element.pSplitEvent->pSpecialData->pos,
+			element.pSplitEvent->pSpecialData->end);
 	#endif
     }
 
