@@ -71,6 +71,12 @@ namespace Tangram
                 return (pos - refBegin);
             }
 
+	    inline int32_t GetSpRefConcatenatedPos(int32_t specialRefID, int32_t pos) const
+	    {
+	        int32_t refBegin = GetSpRefBeginPos(specialRefID);
+		return (pos + refBegin);
+	    }
+
             inline int64_t GetRefBeginPos(int32_t refID) const
             {
                 return (refID == 0 ? 0 : refHeader.endPos[refID - 1] + 1);
