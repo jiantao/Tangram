@@ -126,6 +126,17 @@ static inline void SeqToString(std::string& seqStr, const int8_t* pSeq, unsigned
     }
 }
 
+static inline void ReverseSeqToString(std::string& seqStr, const int8_t* pSeq, unsigned int seqLen)
+{
+    seqStr.clear();
+    int8_t *ptr = pSeq + seqLen - 1;
+    for (int i = seqLen; i > 0; --i)
+    {
+        seqStr += char_table[rc_table[ptr[i]]];
+	--ptr;
+    }
+}
+
 static inline double SeqGetEntropy(const int8_t* readSeq, int readLen)
 {
     int count[4] = {0, 0, 0, 0};

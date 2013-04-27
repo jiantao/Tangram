@@ -425,11 +425,11 @@ void Printer::PrintSpecial(const PrintElmnt& element)
               );
 	#ifdef TD_VERBOSE_DEBUG
 	if (element.pSplitEvent != NULL)
-	fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
+	  fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
 	                element.pSplitEvent->pSpecialData->spRefID,
-			element.pSplitEvent->pSpecialData->familyID ? element.pSplitEvent->pSpecialData->familyID : 0,
-			element.pSplitEvent->pSpecialData->pos ? element.pSplitEvent->pSpecialData->pos : 0,
-			element.pSplitEvent->pSpecialData->end ? element.pSplitEvent->pSpecialData->end : 0);
+			element.pSplitEvent->pSpecialData->familyID,
+			element.pSplitEvent->pSpecialData->pos,
+			element.pSplitEvent->pSpecialData->end);
 	#endif
     }
     else
@@ -451,11 +451,11 @@ void Printer::PrintSpecial(const PrintElmnt& element)
               );
 	#ifdef TD_VERBOSE_DEBUG
 	if (element.pSplitEvent != NULL)
-	fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
+	  fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
 	                element.pSplitEvent->pSpecialData->spRefID,
-			element.pSplitEvent->pSpecialData->familyID ? element.pSplitEvent->pSpecialData->familyID : 0,
-			element.pSplitEvent->pSpecialData->pos ? element.pSplitEvent->pSpecialData->pos : 0,
-			element.pSplitEvent->pSpecialData->end ? element.pSplitEvent->pSpecialData->end : 0);
+			element.pSplitEvent->pSpecialData->familyID : 0,
+			element.pSplitEvent->pSpecialData->pos : 0,
+			element.pSplitEvent->pSpecialData->end : 0);
 	#endif
     }
 
