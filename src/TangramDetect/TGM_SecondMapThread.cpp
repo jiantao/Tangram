@@ -731,6 +731,7 @@ bool SecondMapThread::ProcessSpecial(SplitEvent& splitEvent, vector< vector<unsi
 
     splitEvent.pSpecialData->pos = -1;
     splitEvent.pSpecialData->end = -1;
+    splitEvent.pSpecialData->spRefID  = -1;
     splitEvent.pSpecialData->polyALen = 0;
 
     unsigned int selectedSize = poll[maxID].size();
@@ -756,6 +757,8 @@ bool SecondMapThread::ProcessSpecial(SplitEvent& splitEvent, vector< vector<unsi
         {
             int32_t spPos = ref.GetSpRefPos(secondPartials[idx].spRefID, secondPartials[idx].refPos);
             int32_t spEnd = ref.GetSpRefPos(secondPartials[idx].spRefID, secondPartials[idx].refEnd);
+
+	    splitEvent.pSpecialData->spRefID = secondPartials[idx].spRefID;
 
             if (splitEvent.pSpecialData->pos < 0 || splitEvent.pSpecialData->pos > spPos)
                 splitEvent.pSpecialData->pos = spPos;

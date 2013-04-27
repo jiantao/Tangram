@@ -30,7 +30,16 @@ Printer::Printer(const Detector* pDetector, const DetectPars& detectPars, const 
                 : pDetector(pDetector), detectPars(detectPars), pAligner(pAligner), pRef(pRef), libTable(libTable), 
                   bamPairTable(bamPairTable), genotypePars(genotypePars), genotype(genotype)
 {
-
+  #ifdef TD_VERBOSE_DEBUG
+  fprintf(stderr, "familyMap:\n");
+  for (unsigned int i = 0; i < pRef->familyMap.Size(); ++i) {
+    fprintf(stderr, "%d: %d\n", i, pRef->familyMap[i]);
+  }
+  fprintf(stderr, "familyName:\n");
+  for (unsigned int i = 0; i < pRef->familyName.size(); ++i) {
+    fprintf(stderr, "%d: %s\n", i, pRef->familyName[i].c_str());
+  }
+  #endif
 }
 
 Printer::~Printer()
@@ -368,8 +377,9 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     int insertedLen = -1;
     if (element.pSplitEvent != NULL)
     {
-        if (element.pSplitEvent->pSpecialData->end >= 0 && element.pSplitEvent->pSpecialData->pos >=0)
+        if (element.pSplitEvent->pSpecialData->end >= 0 && element.pSplitEvent->pSpecialData->pos >=0) {
             insertedLen = element.pSplitEvent->pSpecialData->end - element.pSplitEvent->pSpecialData->pos + 1;
+	}
     }
 
     int splitFrag = features.splitFrag[0] + features.splitFrag[1];
@@ -413,10 +423,18 @@ void Printer::PrintSpecial(const PrintElmnt& element)
                splitFrag > 0 ? "" : "IMPRECISE;",
                formatted.str().c_str()
               );
+	#ifdef TD_VERBOSE_DEBUG
+	if (element.pSplitEvent != NULL)
+	fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
+	                element.pSplitEvent->pSpecialData->spRefID,
+			element.pSplitEvent->pSpecialData->familyID ? element.pSplitEvent->pSpecialData->familyID : 0,
+			element.pSplitEvent->pSpecialData->pos ? element.pSplitEvent->pSpecialData->pos : 0,
+			element.pSplitEvent->pSpecialData->end ? element.pSplitEvent->pSpecialData->end : 0);
+	#endif
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "chr%s\t"
+        fprintf(outputGrp.fpSpecial, "%s\t"
                "%d\t"
                ".\t"
                "%c\t"
@@ -431,6 +449,14 @@ void Printer::PrintSpecial(const PrintElmnt& element)
                splitFrag > 0 ? "" : "IMPRECISE;",
                formatted.str().c_str()
               );
+	#ifdef TD_VERBOSE_DEBUG
+	if (element.pSplitEvent != NULL)
+	fprintf(stderr, "%s\t%d\t%s\t%d\t%d\t%d\t%d\n", features.anchorName, features.pos + 1, features.spRefName, 
+	                element.pSplitEvent->pSpecialData->spRefID,
+			element.pSplitEvent->pSpecialData->familyID ? element.pSplitEvent->pSpecialData->familyID : 0,
+			element.pSplitEvent->pSpecialData->pos ? element.pSplitEvent->pSpecialData->pos : 0,
+			element.pSplitEvent->pSpecialData->end ? element.pSplitEvent->pSpecialData->end : 0);
+	#endif
     }
 
     formatted.clear();

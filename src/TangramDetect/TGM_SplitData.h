@@ -66,7 +66,7 @@ namespace Tangram
 
 	int64_t	readPos:24, readEnd:24, spRefID:16;
 
-	uint32_t* cigar;	
+	uint32_t* cigar;
     };
 
     struct SplitSpecial
@@ -80,6 +80,8 @@ namespace Tangram
         int32_t tsdPos;
 
         int32_t tsdLen;
+
+	int32_t spRefID;
     };
 
     struct SplitEvent
