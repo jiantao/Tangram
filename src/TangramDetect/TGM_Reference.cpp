@@ -37,6 +37,7 @@ using namespace std;
 
 #define MD5_CHECKSUM_LEN 16
 
+namespace {
 static int CompareInt(const void* a, const void* b)
 {
     const int* first = (const int*) a;
@@ -44,6 +45,15 @@ static int CompareInt(const void* a, const void* b)
 
     return (*first - *second);
 }
+} // end namespace
+
+namespace Tangram {
+static void SeqTransfer(char* seq, unsigned int len)
+{
+    for (unsigned int i = 0; i != len; ++i)
+        seq[i] = nt_table[ (int) seq[i]];
+}
+} // end namespace Tangram
 
 Reference::Reference()
 {

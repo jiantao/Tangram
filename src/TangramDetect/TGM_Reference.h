@@ -43,12 +43,6 @@ namespace Tangram
         Array<char> md5;
     };
 
-    static void SeqTransfer(char* seq, unsigned int len)
-    {
-        for (unsigned int i = 0; i != len; ++i)
-            seq[i] = nt_table[ (int) seq[i]];
-    }
-
     class Reference
     {
         public:
