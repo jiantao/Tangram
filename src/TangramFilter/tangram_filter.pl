@@ -20,6 +20,11 @@ use warnings;
 use Getopt::Long;
 use Scalar::Util qw(looks_like_number);
 
+if (!@ARGV)
+{
+    ShowHelp();
+}
+
 # command line options
 my $filterType = "MEI";
 
@@ -36,6 +41,9 @@ my $rpFragCut = 2;
 
 # threshold for the number of supporting SR fragments
 my $srFragCut = 2;
+
+# filter genotype flag
+my $filterGenotype = 0;
 
 # show help flag
 my $showHelp = 0;
@@ -65,6 +73,7 @@ my $result = GetOptions("vcf=s" => \$vcfFile,
                         "type=s" => \$filterType,
                         "rpf=i"  => \$rpFragCut, 
                         "srf=i"  => \$srFragCut, 
+                        "gt"  => \$filterGenotype, 
                         "help" => \$showHelp);
 
 # show the help message if required
@@ -112,13 +121,22 @@ while (my $line = <IN>)
 
     my @data = split("\t", $line);
 
+    if ($filterGenotype && $data[9] =~ /^\.:\./)
+    {
+        next;
+    }
+
     # filter the SV events according to their supporting fragments (reads)
     if ($filterType eq "MEI")
     {
         my $ret = 0;
         if (($ret = SpecialFragFilter($data[7])) > 0)
         {
-            SetSpeicalFamily($data[4]);
+            my $family = SetSpeicalFamily($data[4]);
+            if ($family eq "PO")
+            {
+                next;
+            }
 
             # events only supported by read pair signal
             # needs futher filtering
@@ -204,8 +222,14 @@ sub SpecialFragFilter
 sub SetSpeicalFamily
 {
     my $alt = shift(@_);
-    my $family = $1 if $alt =~ /INS:ME:(\S+)?>/;
-    $meiTypes{uc($family)} = 1;
+    my $family = uc($1) if $alt =~ /INS:ME:(\S+)?>/;
+
+    if ($family ne "PO")
+    {
+        $meiTypes{$family} = 1;
+    }
+
+    return $family;
 }
 
 sub CheckMaskFile
