@@ -218,11 +218,11 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
                 ++failCount;
 
             // quit if more than half of the first partial alingments cannot find their second partials
-            if (failCount > failLimit)
-            {
-                CleanUpSecond(splitEvent);
-                return false;
-            }
+            //if (failCount > failLimit)
+            //{
+            //    CleanUpSecond(splitEvent);
+            //    return false;
+            //}
         }
         else
         {
@@ -250,11 +250,11 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
             if (firstPartial.isMajor != 0)
                 ++failCount;
 
-            if (failCount > failLimit)
-            {
-                CleanUpSecond(splitEvent);
-                return false;
-            }
+            //if (failCount > failLimit)
+            //{
+            //    CleanUpSecond(splitEvent);
+            //    return false;
+            //}
         }
         else
         {
@@ -268,6 +268,12 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
             else
                 free(pSecAlignment);
         }
+    }
+
+    if (failCount > failLimit)
+    {
+      CleanUpSecond(splitEvent);
+      return false;
     }
 
     return true;

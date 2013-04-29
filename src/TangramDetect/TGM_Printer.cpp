@@ -380,6 +380,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     {
         if (element.pSplitEvent->pSpecialData->end >= 0 && element.pSplitEvent->pSpecialData->pos >=0) {
             insertedLen = element.pSplitEvent->pSpecialData->end - element.pSplitEvent->pSpecialData->pos + 1;
+	    /*
 	    int concatenated_pos = pRef->GetSpRefConcatenatedPos(
 	                             element.pSplitEvent->pSpecialData->spRefID, 
 	                             element.pSplitEvent->pSpecialData->pos);
@@ -390,6 +391,7 @@ void Printer::PrintSpecial(const PrintElmnt& element)
               else
 	        SeqToString(insertedSeq, sr_seq_ptr, insertedLen);
 	    }
+	    */
 	}
     }
 

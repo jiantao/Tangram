@@ -732,6 +732,8 @@ void BamPairTable::UpdateOrphanPair(void)
         }
 
         TGM_SeqCpy(&(newOrphanPair.read), pAlignment->QueryBases.c_str(), pAlignment->QueryBases.size());
+	if (pAlignment->IsReverseStrand())
+	  TGM_SeqRevComp(&(newOrphanPair.read));
 
         orphanPairs.Increment();
     }

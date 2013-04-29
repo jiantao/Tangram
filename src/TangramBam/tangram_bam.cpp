@@ -291,13 +291,13 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
     param->command_line += argv[i];
   }
 
-  const char *short_option = "hi:o:r:z";
+  const char *short_option = "hi:o:r:t:";
   const struct option long_option[] = {
     {"help", no_argument, NULL, 'h'},
     {"input", required_argument, NULL, 'i'},
     {"output", required_argument, NULL, 'o'},
     {"ref", required_argument, NULL, 'r'},
-    {"no-za-add", no_argument, NULL, 'z'},
+    {"target-ref-name", required_argument, NULL, 't'},
 
     {0, 0, 0, 0}
   };
@@ -316,7 +316,7 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
       case 'i': param->in_bam = optarg; break;
       case 'o': param->out_bam = optarg; break;
       case 'r': param->ref_fasta = optarg; break;
-      case 'z': param->za_add = false; break;
+      case 't': param->target_ref_name = optarg; break;
     }
   }
 
@@ -428,7 +428,6 @@ void LoadAlignmentsNotInTargetChr(
           Align(reverse, aligner, &alignment);
           index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
-      } // end if
       #ifdef TB_VERBOSE_DEBUG
       fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
       #endif
@@ -437,6 +436,7 @@ void LoadAlignmentsNotInTargetChr(
       al.hit_insertion = (index == -1) ? false: true;
       al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
       StoreInBuffer(&al, al_maps);
+      } // end of
     }
   }
 
@@ -456,7 +456,6 @@ void LoadAlignmentsNotInTargetChr(
           Align(reverse, aligner, &alignment);
           index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
-      }
       #ifdef TB_VERBOSE_DEBUG
       fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
       #endif
@@ -465,6 +464,7 @@ void LoadAlignmentsNotInTargetChr(
       al.hit_insertion = (index == -1) ? false: true;
       al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
       StoreInBuffer(&al, al_maps);
+      } // end if
     }
   }
 }
