@@ -198,28 +198,47 @@ void WriteAlignment(map<string, Alignment>* al_map_ite,
 }
 
 // Return true if an alignment contains too many soft clips
-inline bool IsTooManyClips (const BamTools::BamAlignment& al) {
+inline bool IsTooManyClips (const BamTools::BamAlignment& al, int* clip) {
   if (al.CigarData.empty()) return true;
 
-  int clip = 0;
-  if ((al.CigarData.begin())->Type == 'S') clip += (al.CigarData.begin())->Length;
-  if ((al.CigarData.rbegin())->Type == 'S') clip += (al.CigarData.rbegin())->Length;
+  *clip = 0;
+  if ((al.CigarData.begin())->Type == 'S') *clip += (al.CigarData.begin())->Length;
+  if ((al.CigarData.rbegin())->Type == 'S') *clip += (al.CigarData.rbegin())->Length;
 
-  if (clip > (al.Length * kSoftClipRate)) return true;
+  if (*clip > (al.Length * kSoftClipRate)) return true;
   else return false;
 }
 
 inline void MarkAsUnmapped (BamTools::BamAlignment* al, BamTools::BamAlignment* mate) {
-  const bool al_unmapped   = IsTooManyClips(*al);
-  const bool mate_unmapped = IsTooManyClips(*mate);
+  int al_clip = 0, mate_clip =0;
+  const bool al_unmapped   = IsTooManyClips(*al, &al_clip);
+  const bool mate_unmapped = IsTooManyClips(*mate, &mate_clip);
 
   if (!al_unmapped && !mate_unmapped) {
     // nothing
   } else {
-    al->SetIsMapped(!al_unmapped);
-    mate->SetIsMapped(!mate_unmapped);
-    al->SetIsMateMapped(!mate_unmapped);
-    mate->SetIsMateMapped(!al_unmapped);
+    if (al_unmapped && mate_unmapped) { // both mates are unmapped
+      if (al_clip > mate_clip) {
+        // pick the mate with more clips to be unmapped
+	// that is al
+        al->SetIsMapped(false);
+        mate->SetIsMapped(true);
+        al->SetIsMateMapped(true);
+        mate->SetIsMateMapped(false);
+      } else {
+        // pick the mate with more clips to be unmapped
+	// that is mate
+        al->SetIsMapped(true);
+        mate->SetIsMapped(false);
+        al->SetIsMateMapped(false);
+        mate->SetIsMateMapped(true);
+      }
+    } else { // not both mates are unmapped
+      al->SetIsMapped(!al_unmapped);
+      mate->SetIsMapped(!mate_unmapped);
+      al->SetIsMateMapped(!mate_unmapped);
+      mate->SetIsMateMapped(!al_unmapped);
+    }
   }
 }
 
@@ -363,7 +382,8 @@ inline bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
   if (!al.IsMapped()) return true;
   if (al.RefID != al.MateRefID) return true;
   if (al.CigarData.size() > 5) return true;
-  if (IsTooManyClips(al)) return true;
+  int clip = 0;
+  if (IsTooManyClips(al, &clip)) return true;
 
   return false;
 }
