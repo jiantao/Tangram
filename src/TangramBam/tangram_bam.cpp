@@ -489,6 +489,34 @@ void LoadAlignmentsNotInTargetChr(
   }
 }
 
+void MoveAlInAlmapToAlmaps(
+    map<string, Alignment>* al_map1,
+    map<string, Alignment>* al_map2,
+    vector<map<string, Alignment> >* al_maps,
+    BamTools::BamWriter* writer) {
+  for (map<string, Alignment>::iterator ite = al_map1->begin();
+       ite != al_map1->end(); ++ite) {
+    const int32_t ref_id = ite->second.bam_alignment.RefID;
+    const int32_t mate_ref_id = ite->second.bam_alignment.MateRefID;
+    if (mate_ref_id > ref_id) 
+      ((*al_maps)[ref_id])[ite->second.bam_alignment.Name] = ite->second;
+    else
+      WriteAlignment(&(ite->second), writer);
+  }
+  al_map1->clear();
+
+  for (map<string, Alignment>::iterator ite = al_map2->begin();
+       ite != al_map2->end(); ++ite) {
+    const int32_t ref_id = ite->second.bam_alignment.RefID;
+    const int32_t mate_ref_id = ite->second.bam_alignment.MateRefID;
+    if (mate_ref_id > ref_id) 
+      ((*al_maps)[ref_id])[ite->second.bam_alignment.Name] = ite->second;
+    else
+      WriteAlignment(&(ite->second), writer);
+  }
+  al_map2->clear();
+}
+
 int main(int argc, char** argv) {
   Param param;
   
@@ -503,9 +531,13 @@ int main(int argc, char** argv) {
 
   // Get the ID of target chromosome
   int target_ref_id = -1;
+  int previous_ref_id = -1;
+  //bool region_set = false;
   vector<map<string, Alignment> > al_maps(reader.GetReferenceCount());
   if (!param.target_ref_name.empty()) {
     target_ref_id = reader.GetReferenceID(param.target_ref_name);
+    previous_ref_id = target_ref_id;
+    //region_set = true;
   }
 
   // Open fasta
@@ -539,9 +571,22 @@ int main(int argc, char** argv) {
     const BamTools::RefVector& references = reader.GetReferenceData();
     const BamTools::RefData& ref_data = references.at(target_ref_id);
     reader.SetRegion(target_ref_id, 0, target_ref_id, ref_data.RefLength);
+  } else {
+    target_ref_id = 0;
+    previous_ref_id = 0;
   }
 
   while (reader.GetNextAlignment(bam_alignment)) {
+    if (bam_alignment.RefID != previous_ref_id) { // BAM is in the next chromosome
+      #ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "BAM jumps from chrID: %d to chrID: %d\n", previous_ref_id, bam_alignment.RefID);
+      #endif
+      MoveAlInAlmapToAlmaps(&al_map1, &al_map2, &al_maps, &writer);
+      al_map_cur = &al_map1;
+      al_map_pre = &al_map2;
+      previous_ref_id = bam_alignment.RefID;
+      target_ref_id = bam_alignment.RefID;
+    }
     #ifdef TB_VERBOSE_DEBUG
     fprintf(stderr, "%s\n%s\n", bam_alignment.Name.c_str(), bam_alignment.QueryBases.c_str());
     #endif
