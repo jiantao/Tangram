@@ -365,7 +365,7 @@ int PickBestAlignment(const int& request_score,
   fprintf(stderr, "SSW ref_begin: %d, ref_end: %d\n", alignment.ref_begin, alignment.ref_end);
   fprintf(stderr, "cigar: %s\n", alignment.cigar_string.c_str());
 #endif
-  if (alignment.sw_score < request_score) {
+  if (alignment.sw_score < (request_score * 1.4)) {
     return -1; // no proper alignment is found
   } else {
     int accu_len = 0;
