@@ -128,7 +128,7 @@ void GetZa(const Alignment& al, const Alignment& mate, string* za) {
     mate2_ptr = &al;
   }
 
-  *za += (std::to_string(mate1_ptr->bam_alignment.MapQuality) + ";;" 
+  *za += (std::to_string(static_cast<long long>(mate1_ptr->bam_alignment.MapQuality)) + ";;" 
           + (mate1_ptr->hit_insertion ? mate1_ptr->ins_prefix : "") 
 	  + ";1;");
   
@@ -138,7 +138,7 @@ void GetZa(const Alignment& al, const Alignment& mate, string* za) {
     *za += ";><@;";
   }
 
-  *za += (std::to_string(mate2_ptr->bam_alignment.MapQuality) + ";;" 
+  *za += (std::to_string(static_cast<long long>(mate2_ptr->bam_alignment.MapQuality)) + ";;" 
           + (mate2_ptr->hit_insertion ? mate2_ptr->ins_prefix : "") 
 	  + ";1;;>");
 
@@ -163,15 +163,15 @@ void WriteAlignment(
     string za;
     if (al->bam_alignment.IsPaired()) { // paired-end read
       if (al->bam_alignment.IsFirstMate()) {
-        za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+        za = "<@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
            + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
            + "<&;0;;;0;;>";
       } else {
-        za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+        za = "<&;0;;;0;;><@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
              + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
       }
     } else { // sinle-end read
-      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+      za = "<@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
            + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
     }
 
@@ -188,15 +188,15 @@ void WriteAlignment(map<string, Alignment>* al_map_ite,
     string za;
     if (al->bam_alignment.IsPaired()) { // paired-end read
       if (al->bam_alignment.IsFirstMate()) {
-        za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+        za = "<@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
            + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>"
            + "<&;0;;;0;;>";
       } else {
-        za = "<&;0;;;0;;><@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+        za = "<&;0;;;0;;><@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
              + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
       }
     } else { // sinle-end read
-      za = "<@;" + std::to_string(al->bam_alignment.MapQuality) + ";;"
+      za = "<@;" + std::to_string(static_cast<long long>(al->bam_alignment.MapQuality)) + ";;"
            + (al->hit_insertion ? al->ins_prefix : "") + ";1;;>";
     }
 
