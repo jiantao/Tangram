@@ -683,8 +683,7 @@ void BamPairTable::UpdateOrphanPair(void)
         if (!pAlignment->GetTag("RG", readGrpName))
             return;
 
-        uint32_t readGrpID = 0;
-        if (!libTable.GetReadGrpID(readGrpID, readGrpName.c_str()))
+        if (!libTable.GetReadGrpID(pairStat.readGrpID, readGrpName.c_str()))
             return;
 
         // filter out those pairs whose libraries are not good
@@ -710,7 +709,7 @@ void BamPairTable::UpdateOrphanPair(void)
         OrphanPair& newOrphanPair = orphanPairs.End();
 
         newOrphanPair.bestMQ = pairStat.bestMQ[0];
-        newOrphanPair.readGrpID = readGrpID;
+        newOrphanPair.readGrpID = pairStat.readGrpID;
 
         newOrphanPair.anchorPos = pAlignment->Position;
         newOrphanPair.anchorEnd = pairStat.end[0];
