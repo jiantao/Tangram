@@ -268,8 +268,8 @@ void StoreAlignment(
 
 void StoreAlignment(
     Alignment* al,
-    map<string, Alignment> *al_map_cur,
-    map<string, Alignment> *al_map_pre,
+    map<string, Alignment>*& al_map_cur,
+    map<string, Alignment>*& al_map_pre,
     BamTools::BamWriter* writer) {
   // Clear up the buffers once the al_map_cur buffer is full
   // 1. Clear up al_map_pre
@@ -277,14 +277,20 @@ void StoreAlignment(
   if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
     WriteAlignment(al_map_pre, writer);
     al_map_pre->clear();
+//cerr << "======" << endl;
+//cerr << al_map_pre << endl;
+//cerr << al_map_cur << endl;
     map<string, Alignment> *tmp = al_map_pre;
+//cerr << tmp << endl;
     al_map_pre = al_map_cur;
     al_map_cur = tmp;
+//cerr << al_map_pre << endl;
+//cerr << al_map_cur << endl;
   }
 
   map<string, Alignment>::iterator ite_cur = al_map_cur->find(al->bam_alignment.Name);
   if (ite_cur == al_map_cur->end()) {
-    if (!al_map_pre) {
+    if (al_map_pre != NULL) {
       map<string, Alignment>::iterator ite_pre = al_map_pre->find(al->bam_alignment.Name);
       if (ite_pre == al_map_pre->end()) { // al is not found in cur or pre either
         (*al_map_cur)[al->bam_alignment.Name] = *al;
@@ -567,6 +573,8 @@ int main(int argc, char** argv) {
   map<string, Alignment> *al_map_cur = &al_map1, *al_map_pre = &al_map2;
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
+
+//cerr << al_map_pre << "\t" << al_map_cur << endl;
   
   // Load alignments sitting in other chromosomes and their mates are in the target chr
   if (target_ref_id != -1) {
