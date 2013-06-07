@@ -295,7 +295,8 @@ void StoreAlignment(
       if (ite_pre == al_map_pre->end()) { // al is not found in cur or pre either
         (*al_map_cur)[al->bam_alignment.Name] = *al;
       } else { // find the mate in al_map_pre
-        MarkAsUnmapped(&(al->bam_alignment), &(ite_pre->second.bam_alignment));
+        if (al->bam_alignment.IsMapped() && ite_pre->second.bam_alignment.IsMapped())
+          MarkAsUnmapped(&(al->bam_alignment), &(ite_pre->second.bam_alignment));
 	WriteAlignment(ite_pre->second, al, writer);
         WriteAlignment(*al, &(ite_pre->second), writer);
         al_map_pre->erase(ite_pre);
@@ -304,7 +305,8 @@ void StoreAlignment(
       (*al_map_cur)[al->bam_alignment.Name] = *al;
     }
   } else { // find the mate in al_map_cur
-    MarkAsUnmapped(&(al->bam_alignment), &(ite_cur->second.bam_alignment));
+    if (al->bam_alignment.IsMapped() && ite_cur->second.bam_alignment.IsMapped())
+      MarkAsUnmapped(&(al->bam_alignment), &(ite_cur->second.bam_alignment));
     WriteAlignment(ite_cur->second, al, writer);
     WriteAlignment(*al, &(ite_cur->second), writer);
     al_map_cur->erase(ite_cur);
