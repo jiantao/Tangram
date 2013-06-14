@@ -100,6 +100,10 @@ namespace Tangram
 
         uint32_t size5;
 
+        uint32_t success3;
+
+        uint32_t success5;
+
         // how many partial alignments have a long enough unaligned part (> trigger length)
         uint32_t majorCount;
 

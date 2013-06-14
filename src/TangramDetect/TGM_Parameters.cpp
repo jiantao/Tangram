@@ -28,11 +28,37 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       20
+#define OPT_TOTAL_ARGS       21
 
 // total number of required arguments we should expect for the split-read build program
-#define OPT_REQUIRED_ARGS    3
+#define OPT_REQUIRED_ARGS    5
 
+enum Options
+{
+    OPT_HELP = 0,
+    OPT_LIB_INPUT,
+    OPT_HIST_INPUT,
+    OPT_INPUT_FILE,
+    OPT_RANGE_STR,          
+    OPT_REF_INPUT,
+    OPT_CHECK_LIB,
+    OPT_MIN_CLUSTER_SIZE,
+    OPT_MIN_EVENT_LEN,      
+    OPT_MIN_MQ,      
+    OPT_SPECIAL_MIN_MQ,
+    OPT_DETECT_SET,
+    OPT_MIN_SCORE_RATE,
+    OPT_MIN_COVER_RATE,
+    OPT_GENOTYPE,
+    OPT_BINO_PARS,
+    OPT_GT_RP_MIN_FRAG,
+    OPT_GT_SR_MIN_FRAG,
+    OPT_MIN_JUMP_LEN,
+    OPT_THREAD_NUM,
+    OPT_OUTPUT             
+};
+
+/*  
 // the index of show help in the option object array
 #define OPT_HELP                 0
 
@@ -75,6 +101,7 @@ using namespace BamTools;
 #define OPT_THREAD_NUM           18
 
 #define OPT_OUTPUT               19
+*/
 
 
 #define DEFAULT_MIN_CLUSTER_SIZE 2
@@ -170,6 +197,7 @@ void Parameters::Set(const char** argv, int argc)
         {"smq",   NULL, FALSE},
         {"dt",  NULL, FALSE},
         {"msr",  NULL, FALSE},
+        {"mcr",  NULL, FALSE},
         {"gt",  NULL, FALSE},
         {"bp",  NULL, FALSE},
         {"rpf",  NULL, FALSE},
@@ -310,6 +338,14 @@ void Parameters::Set(const char** argv, int argc)
 
                 if (alignerPars.minScoreRate <= 0.0 || alignerPars.minScoreRate > 1.0)
                     TGM_ErrQuit("ERROR: %s is an invalid minimum score rate. (0.0 - 1.0]\n", opts[i].value);
+
+                break;
+            case OPT_MIN_COVER_RATE:
+                if (opts[i].value != NULL)
+                    alignerPars.minCoverRate = atof(opts[i].value);
+
+                if (alignerPars.minCoverRate <= 0.0 || alignerPars.minCoverRate > 1.0)
+                    TGM_ErrQuit("ERROR: %s is an invalid minimum cover rate. (0.0 - 1.0]\n", opts[i].value);
 
                 break;
             case OPT_GENOTYPE:
@@ -494,28 +530,29 @@ void Parameters::ShowHelp(void) const
     printf("\nProgram: tangram (Toolbox for structural variation detection)\n");
     printf("Version: %s\n\n", TGM_VERSION);
 
-    printf("Usage: tangram_detect [options] -lb <library_info> -ht <fragment_length_histogram> -in <bam_list> -rg <regions>\n\n");
+    printf("Usage: tangram_detect [options] -lb <library_info> -ht <fragment_length_histogram> -in <bam_list> -rg <regions> -ref <ref_file>\n\n");
 
     printf("Mandatory arguments: -lb   FILE   library information file\n");
     printf("                     -ht   FILE   fragment length histogram file\n");
     printf("                     -in   FILE   list of all input bam files\n");
-    printf("                     -rg   STRING chromosome region (all the bam files must be sorted by chromosome positions and indexed)\n\n");
+    printf("                     -rg   STRING chromosome region (all the bam files must be sorted by chromosome positions and indexed)\n");
+    printf("                     -ref  FILE   transfered reference sequence, required for split alignment\n\n");
 
-    printf("Options:             -ref  FILE   transfered reference sequence, required for split alignment[null]\n");
-    printf("                     -out  STR    prefix to the output files, including the path.[stdout]\n");
+    printf("Options:             -out  STR    prefix to the output files, including the path [stdout]\n");
     printf("                     -cl   INT    check for invalid libraries\n");
-    printf("                     -mcs  INT    minimum cluster size[2]\n");
-    printf("                     -mel  INT    minimum event lenth[100]\n");
-    printf("                     -mq   INT    minimum mapping quality for pairs other than special pairs[20]\n");
-    printf("                     -smq  INT    minimum mapping quality for special pairs[20]\n");
+    printf("                     -mcs  INT    minimum cluster size [2]\n");
+    printf("                     -mel  INT    minimum event lenth [100]\n");
+    printf("                     -mq   INT    minimum mapping quality for pairs other than special pairs [20]\n");
+    printf("                     -smq  INT    minimum mapping quality for special pairs [20]\n");
     printf("                     -dt   INT    detection set [0xffffffff: report all types of SV]\n");
-    printf("                     -msr  FLOAT  minimum score rate for split alignments[0.8]\n");
-    printf("                     -gt   FLAG   do genotyping for detected SV events[false]\n");
-    printf("                     -bp   STRING binominal distribution parameters for three possible genotypes(RR, RA and AA).[0.001, 0.5, 0.999]\n");
-    printf("                     -rpf  INT    minimum number of supporting read-pair fragments for genotype[2]\n");
-    printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype[5]\n");
-    printf("                     -mjl  INT    minimum jumping (bam index jump) length for genotyping. Set to 0 to turn off the jump.[500000]\n");
-    printf("                     -p    INT    number of processors (threads)[1]\n");
+    printf("                     -mcr  FLOAT  minimum cover rate for split alignments [0.85]\n");
+    printf("                     -msr  FLOAT  minimum score rate for split alignments [0.8]\n");
+    printf("                     -gt   FLAG   do genotyping for detected SV events [false]\n");
+    printf("                     -bp   STRING binominal distribution parameters for three possible genotypes(RR, RA and AA) [0.001, 0.5, 0.999]\n");
+    printf("                     -rpf  INT    minimum number of supporting read-pair fragments for genotype [2]\n");
+    printf("                     -srf  INT    minimum number of supporting split-read fragments for genotype [5]\n");
+    printf("                     -mjl  INT    minimum jumping (bam index jump) length for genotyping. Set to 0 to turn off the jump [50000000]\n");
+    printf("                     -p    INT    number of processors (threads) [1]\n");
     printf("                     -help        print this help message\n");
 
     printf("Notes:\n\n");

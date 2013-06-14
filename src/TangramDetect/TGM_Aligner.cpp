@@ -380,9 +380,11 @@ void Aligner::InsertNewSplitEvent(const Array<PrtlAlgnmnt>& firstPartials, const
     SplitEvent& event = splitEvents.End();
     splitEvents.Increment();
 
-
     event.size3 = count3;
     event.size5 = count5;
+
+    event.success3 = 0;
+    event.success5 = 0;
 
     event.pos3[0] = INT32_MAX;
     event.pos3[1] = 0;

@@ -526,8 +526,8 @@ void Printer::SetSpecialFeaturesFromSplit(const SplitEvent& splitEvent)
 {
     const Array<char*>* pSpecialRefs = libTable.GetSpecialRefNames();
 
-    features.splitFrag[0] = splitEvent.size3; 
-    features.splitFrag[1] = splitEvent.size5;
+    features.splitFrag[0] = splitEvent.success3; 
+    features.splitFrag[1] = splitEvent.success5;
 
     features.pos = splitEvent.pos;
     features.len = splitEvent.len;

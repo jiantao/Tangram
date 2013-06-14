@@ -18,6 +18,6 @@
 #define  TGM_VERSION_H
 
 // version number of current release
-const char* TGM_VERSION = "0.2.1";
+const char* TGM_VERSION = "0.2.3";
 
 #endif  /*TGM_VERSION_H*/

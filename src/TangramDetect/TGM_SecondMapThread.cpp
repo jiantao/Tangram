@@ -270,11 +270,13 @@ bool SecondMapThread::TrySpecial(SplitEvent& splitEvent, TGM_Sequence& minusSeq,
         }
     }
 
+    /*  
     if (failCount > failLimit)
     {
-      CleanUpSecond(splitEvent);
-      return false;
+        CleanUpSecond(splitEvent);
+        return false;
     }
+    */
 
     return true;
 }
@@ -708,6 +710,9 @@ bool SecondMapThread::ProcessSpecial(SplitEvent& splitEvent, vector< vector<unsi
         }
     }
 
+    if (maxCount == 0)
+        return false;
+
     double agreeRate = (double) maxCount / validCount;
     if (agreeRate < alignerPars.minAgreeRate)
         return false;
@@ -746,12 +751,15 @@ bool SecondMapThread::ProcessSpecial(SplitEvent& splitEvent, vector< vector<unsi
         unsigned int idx = poll[maxID][i];
         if (idx >= splitEvent.size3)
         {
+            ++(splitEvent.success5);
             idx -= splitEvent.size3;
             firstPartials = splitEvent.first5;
             secondPartials = splitEvent.second3;
             pStart = &(splitEvent.pos3[0]);
             pEnd = &(splitEvent.pos3[1]);
         }
+        else
+            ++(splitEvent.success3);
 
         firstPartials[idx].isMajor = 1;
         secondPartials[idx].isMajor = 1;

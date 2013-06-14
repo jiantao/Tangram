@@ -209,7 +209,7 @@ bool FirstMapThread::SetFirstRefRegion(RefRegion& refRegion, int32_t anchorPos, 
 
     if (!isUpStream)
     {
-        int32_t start = anchorEnd + 1;
+        int32_t start = anchorEnd + 1 - readLen;
         int32_t end = anchorPos + fragLenHigh + 2 * readLen;
 
         if (end >= refEnd)
@@ -227,7 +227,7 @@ bool FirstMapThread::SetFirstRefRegion(RefRegion& refRegion, int32_t anchorPos, 
     else
     {
         int32_t start = anchorEnd - fragLenHigh - 2 * readLen;
-        int32_t end = anchorPos - 1;
+        int32_t end = anchorPos - 1 + readLen;
 
         if (start < 0)
             start = 0;

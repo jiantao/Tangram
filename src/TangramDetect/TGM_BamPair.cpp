@@ -161,7 +161,8 @@ bool BamPairTable::BamPairFilter(void) const
     if (!(*pAlignment).IsPaired() 
         || (!pAlignment->IsMapped() && !pAlignment->IsMateMapped()) 
         || (*pAlignment).RefID < 0 || pAlignment->MateRefID < 0
-        || pAlignment->IsFailedQC() || pAlignment->IsDuplicate() || !pAlignment->IsPrimaryAlignment()
+        // || pAlignment->IsFailedQC() || pAlignment->IsDuplicate() || !pAlignment->IsPrimaryAlignment()
+        || pAlignment->IsFailedQC() || pAlignment->IsDuplicate()
         || pAlignment->Name == "0" || pAlignment->Name == "*") 
     {
         return false;
@@ -241,6 +242,7 @@ void BamPairTable::ParseZAstr(bool isUpMate)
     unsigned char whichMate = 0;
     int numMappings = 0;
     const char* currFieldPos = zaStr.c_str() + 1;
+    char mateSimbol = *currFieldPos;
 
     if ((*currFieldPos == '&' && isUpMate) || (*currFieldPos == '@' && !isUpMate))
         whichMate = 1;
@@ -307,12 +309,21 @@ void BamPairTable::ParseZAstr(bool isUpMate)
     }
     else
     {
-        pairStat.numMM[whichMate] = GetNumMismatchFromBam(pairStat.softSize[whichMate]);
-        pairStat.end[whichMate] = pAlignment->GetEndPosition(false,  true);
+        if (mateSimbol != '&')
+        {
+            pairStat.numMM[whichMate] = GetNumMismatchFromBam(pairStat.softSize[whichMate]);
+            pairStat.end[whichMate] = pAlignment->GetEndPosition(false,  true);
+        }
+        else
+        {
+            pairStat.numMM[whichMate] = 0;
+            pairStat.end[whichMate] = pAlignment->MatePosition + pAlignment->QueryBases.length() - 1;
+        }
     }
 
 
     // handle the sencond ZA tag
+    mateSimbol = currFieldPos[1];
     currFieldPos += 3;
     currFieldNum = 1;
     currFieldEnd = NULL;
@@ -376,8 +387,16 @@ void BamPairTable::ParseZAstr(bool isUpMate)
     }
     else
     {
-        pairStat.numMM[whichMate] = GetNumMismatchFromBam(pairStat.softSize[whichMate]);
-        pairStat.end[whichMate] = pAlignment->GetEndPosition(false, true);
+        if (mateSimbol != '&')
+        {
+            pairStat.numMM[whichMate] = GetNumMismatchFromBam(pairStat.softSize[whichMate]);
+            pairStat.end[whichMate] = pAlignment->GetEndPosition(false,  true);
+        }
+        else
+        {
+            pairStat.numMM[whichMate] = 0;
+            pairStat.end[whichMate] = pAlignment->MatePosition + pAlignment->QueryBases.length() - 1;
+        }
     }
 }
 
@@ -711,7 +730,7 @@ void BamPairTable::UpdateOrphanPair(void)
         newOrphanPair.bestMQ = pairStat.bestMQ[0];
         newOrphanPair.readGrpID = pairStat.readGrpID;
 
-        newOrphanPair.anchorPos = pAlignment->Position;
+        newOrphanPair.anchorPos = pAlignment->MatePosition;
         newOrphanPair.anchorEnd = pairStat.end[0];
         newOrphanPair.refID = pAlignment->RefID;
 
