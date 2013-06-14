@@ -255,14 +255,14 @@ void Parameters::Set(const char** argv, int argc)
 
                 break;
             case OPT_REF_INPUT:
-                if (opts[i].value != NULL)
-                {
-                    alignerPars.fpRefInput = fopen(opts[i].value, "rb");
-                    if (alignerPars.fpRefInput == NULL)
-                        TGM_ErrQuit("ERROR: Cannot open file \"%s\" for read.\n", opts[i].value);
+                if (opts[i].value == NULL)
+                    TGM_ErrQuit("ERROR: The reference file is not specified.\n");
 
-                    detectPars.useSplitRead = true;
-                }
+                alignerPars.fpRefInput = fopen(opts[i].value, "rb");
+                if (alignerPars.fpRefInput == NULL)
+                    TGM_ErrQuit("ERROR: Cannot open file \"%s\" for read.\n", opts[i].value);
+
+                detectPars.useSplitRead = true;
 
                 break;
 
