@@ -215,6 +215,9 @@ bool FirstMapThread::SetFirstRefRegion(RefRegion& refRegion, int32_t anchorPos, 
         if (end >= refEnd)
             end = refEnd;
 
+        if (start < 0)
+            start = 0;
+
         int32_t regionLen = end - start + 1;
 
         if (regionLen <= 0 || regionLen < (int) readLen)
@@ -234,6 +237,9 @@ bool FirstMapThread::SetFirstRefRegion(RefRegion& refRegion, int32_t anchorPos, 
 
         if (end < 0)
             end = 0;
+
+        if (end > refEnd)
+            end = refEnd;
 
         int32_t regionLen = end - start + 1;
         if (regionLen <= 0 || regionLen < (int) readLen)
