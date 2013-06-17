@@ -3,6 +3,12 @@
 #include <limits.h>
 #include <getopt.h>
 
+extern "C" {
+#include "../OutSources/samtools/bam.h"
+#include "SR_HashRegionTable.h"
+#include "SR_QueryRegion.h"
+}
+
 #include <vector>
 #include <string>
 #include <iostream>
@@ -11,6 +17,8 @@
 #include "api/BamWriter.h"
 #include "../OutSources/fasta/Fasta.h"
 #include "../OutSources/stripedSW/ssw_cpp.h"
+#include "special_hasher.h"
+#include "hashes_collection.h"
 
 using namespace std;
 
@@ -534,6 +542,61 @@ void MoveAlInAlmapToAlmaps(
   al_map2->clear();
 }
 
+bool ConvertBamAlignmentToBam1t(
+    const BamTools::BamAlignment& bal,
+    bam1_t* b1t) {
+  b1t->core.l_qname = 1;
+  b1t->core.n_cigar = 0;
+  b1t->core.l_qseq  = bal.Length;
+
+  b1t->l_aux    = 0;
+  b1t->data_len = b1t->core.l_qname + (b1t->core.l_qseq + 1) / 2;
+  b1t->m_data   = b1t->data_len;
+  b1t->data =(uint8_t*) calloc(b1t->m_data, sizeof(uint8_t));
+
+  b1t->data[0] = '\0';
+  uint8_t* ptr = b1t->data + 1;
+  for (int32_t i = 0; i < bal.Length; ++i) {
+    uint8_t cur;
+    switch(bal.QueryBases[i]) {
+      case 'A': cur = 1;  break;
+      case 'C': cur = 2;  break;
+      case 'G': cur = 4;  break;
+      case 'T': cur = 8;  break;
+      default:  cur = 15; break;
+    }
+    if ((i % 2) == 0) {
+      *ptr = cur << 4;
+    } else {
+      *ptr |= cur;
+      ++ptr;
+    }
+  }
+
+  return true;
+}
+
+void LoadHash(
+    const BamTools::BamAlignment& bal,
+    const SR_Reference* ref,
+    const SR_InHashTable* hash_table,
+    HashRegionTable* hashes,
+    Scissors::HashesCollection* hashes_collection) {
+
+  SR_QueryRegion* query_region = SR_QueryRegionAlloc();
+  query_region->pOrphan = bam_init1();
+  ConvertBamAlignmentToBam1t(bal, query_region->pOrphan);
+
+  HashRegionTableInit(hashes, bal.Length);
+  SR_QueryRegionSetRangeSpecial(query_region, ref->seqLen);
+  HashRegionTableLoad(hashes, hash_table, query_region);
+  hashes_collection->Init(*(hashes->pBestCloseRegions));
+  hashes_collection->SortByLength();
+
+  bam_destroy1(query_region->pOrphan);
+  SR_QueryRegionFree(query_region);
+}
+
 int main(int argc, char** argv) {
   Param param;
   
@@ -557,17 +620,28 @@ int main(int argc, char** argv) {
     //region_set = true;
   }
 
+  // Special hash
+  SpecialHasher sp_hasher;
+  sp_hasher.SetFastaName(param.ref_fasta.c_str());
+  if (!sp_hasher.Load()) {
+    fprintf(stderr,"ERROR: The program cannot load special references.\n");
+    return 1;
+  }
+  const SR_Reference* reference = sp_hasher.GetReference();
+  const SR_InHashTable* hash_table = sp_hasher.GetHashTable();
+  HashRegionTable* hashes = HashRegionTableAlloc();
+
   // Open fasta
-  FastaReference fasta;
-  LoadReference(param.ref_fasta.c_str(), &fasta);
+  //FastaReference fasta;
+  //LoadReference(param.ref_fasta.c_str(), &fasta);
 
   // Build SSW aligners for every reference in fasta
-  SpecialReference s_ref;
-  ConcatenateSpecialReference(&fasta, &s_ref);
+  //SpecialReference s_ref;
+  //ConcatenateSpecialReference(&fasta, &s_ref);
 
   // Build SSW aligner
-  StripedSmithWaterman::Aligner aligner;
-  aligner.SetReferenceSequence(s_ref.concatnated.c_str(), s_ref.concatnated_len);
+  //StripedSmithWaterman::Aligner aligner;
+  //aligner.SetReferenceSequence(s_ref.concatnated.c_str(), s_ref.concatnated_len);
 
   // CORE ALGORITHM
   BamTools::BamAlignment bam_alignment;
@@ -576,8 +650,6 @@ int main(int argc, char** argv) {
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
 
-//cerr << al_map_pre << "\t" << al_map_cur << endl;
-  
   // Load alignments sitting in other chromosomes and their mates are in the target chr
   if (target_ref_id != -1) {
     string indexfilename = infilename + ".bai";
@@ -586,7 +658,7 @@ int main(int argc, char** argv) {
       reader.CreateIndex();
       fprintf(stderr, "Warning: %s has been created.\n", indexfilename.c_str());
     }
-    LoadAlignmentsNotInTargetChr(target_ref_id, aligner, s_ref, &reader, &al_maps);
+    //LoadAlignmentsNotInTargetChr(target_ref_id, aligner, s_ref, &reader, &al_maps);
     const BamTools::RefVector& references = reader.GetReferenceData();
     const BamTools::RefData& ref_data = references.at(target_ref_id);
     reader.SetRegion(target_ref_id, 0, target_ref_id, ref_data.RefLength);
@@ -611,16 +683,18 @@ int main(int argc, char** argv) {
     #endif
     int index = -1;
     if (IsProblematicAlignment(bam_alignment)) {
-      Align(bam_alignment.QueryBases, aligner, &alignment);
-      index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+      Scissors::HashesCollection hashes_collection;
+      LoadHash(bam_alignment, reference, hash_table, hashes, &hashes_collection);
+      //Align(bam_alignment.QueryBases, aligner, &alignment);
+      //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
       if (index == -1) { // try the reverse complement sequences
         string reverse;
         GetReverseComplement(bam_alignment.QueryBases, &reverse);
         #ifdef TB_VERBOSE_DEBUG
         fprintf(stderr, "%s\n", reverse.c_str());
         #endif
-        Align(reverse, aligner, &alignment);
-        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        //Align(reverse, aligner, &alignment);
+        //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
       }
     }
       
@@ -628,6 +702,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
     #endif
 
+    /*
     al.Clear();
     al.bam_alignment = bam_alignment;
     al.hit_insertion = (index == -1) ? false: true;
@@ -642,6 +717,7 @@ int main(int argc, char** argv) {
 	  StoreAlignment(&al, &al_maps, &writer);
       }
     } // end if
+    */
   }
 
   // Close
@@ -651,4 +727,6 @@ int main(int argc, char** argv) {
   al_map2.clear();
   reader.Close();
   writer.Close();
+
+  HashRegionTableFree(hashes);
 }

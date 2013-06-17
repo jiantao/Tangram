@@ -10,13 +10,11 @@ REQUIRED_OBJS = $(OBJ_DIR)/Fasta.o \
 		$(OBJ_DIR)/split.o \
 		$(OBJ_DIR)/ssw_cpp.o \
 		$(OBJ_DIR)/ssw.o \
-		$(OBJ_DIR)/md5.o
-		#$(OBJ_DIR)/SR_InHashTable.o \
-		#$(OBJ_DIR)/SR_OutHashTable.o
+		$(OBJ_DIR)/md5.o 
 
 $(PROGRAM): $(OBJS) $(COBJS)
 	@echo "  * linking $(PROGRAM)"
-	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(REQUIRED_OBJS) -lbamtools -lz
+	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(REQUIRED_OBJS) -lbamtools -lbam -lz
 
 $(OBJS): $(SOURCES)
 	@echo "  * compiling" $(*F).cpp
