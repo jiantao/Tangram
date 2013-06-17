@@ -2,14 +2,18 @@ BAM_LIB:=$(LIB_DIR)/libbamtools.a
 SAM_LIB:=$(LIB_DIR)/libbam.a
 SSW:=$(OBJ_DIR)/ssw.o $(OBJ_DIR)/ssw_cpp.o
 FASTA:=$(OBJ_DIR)/Fasta.o
+UTIL:=$(OBJ_DIR)/md5.o
 
-libs: $(SSW) $(FASTA) $(BAM_LIB) $(SAM_LIB)
+libs: $(SSW) $(FASTA) $(UTIL) $(BAM_LIB) $(SAM_LIB)
 
 $(SSW): stripedSW/*
 	@$(MAKE) all --no-print-directory --directory=stripedSW;
 
 $(FASTA): fasta/*
 	@$(MAKE) all --no-print-directory --directory=fasta;
+
+$(UTIL): util/*
+	@$(MAKE) all --no-print-directory --directory=util;
 
 $(BAM_LIB):
 	@echo "  * generating libbamtools.a"

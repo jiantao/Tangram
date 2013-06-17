@@ -19,7 +19,7 @@
 #include <cstring>
 #include <map>
 
-#include "md5.h"
+#include "../OutSources/util/md5.h"
 #include "kseq.h"
 #include "khash.h"
 #include "TGM_Error.h"
