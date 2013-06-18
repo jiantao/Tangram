@@ -420,8 +420,19 @@ void Aligner::InsertNewSplitEvent(const Array<PrtlAlgnmnt>& firstPartials, const
     unsigned int currEnd = currStart + simpleRegion.count;
     for (unsigned int j = currStart; j != currEnd; ++j)
     {
-        const OrphanPair& orphanPair = bamPairTable.orphanPairs[firstPartials[j].origIdx];
-        int readLen = orphanPair.read.len;
+        int readLen = 0;
+        if (firstPartials[j].isSoft)
+        {
+            const SoftPair& softPair = bamPairTable.softPairs[firstPartials[j].origIdx];
+            readLen = softPair.read.len;
+        }
+        else
+        {
+            const OrphanPair& orphanPair = bamPairTable.orphanPairs[firstPartials[j].origIdx];
+            readLen = orphanPair.read.len;
+
+        }
+
         int alignedLen = firstPartials[j].readEnd - firstPartials[j].readPos + 1;
 
         if (firstPartials[j].partialType == PARTIAL_3)

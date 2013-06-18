@@ -44,7 +44,7 @@ int TGM_GetOpt(TGM_Option opts[], int argc, const char* argv[])
         for (unsigned int j = 0; ; ++j)
         {
             if (opts[j].name == NULL)
-                TGM_ErrQuit("ERROR: Ivalid argument \"%s\".\n", argv[i]);
+                TGM_ErrQuit("ERROR: Invalid argument \"%s\".\n", argv[i]);
 
             if (strcmp(currOpt, opts[j].name) == 0)
             {

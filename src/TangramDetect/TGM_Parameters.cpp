@@ -28,7 +28,7 @@ using namespace Tangram;
 using namespace BamTools;
 
 // total number of arguments we should expect for the split-read build program
-#define OPT_TOTAL_ARGS       21
+#define OPT_TOTAL_ARGS       22
 
 // total number of required arguments we should expect for the split-read build program
 #define OPT_REQUIRED_ARGS    5
@@ -47,6 +47,7 @@ enum Options
     OPT_MIN_MQ,      
     OPT_SPECIAL_MIN_MQ,
     OPT_DETECT_SET,
+    OPT_MIN_SOFT_SIZE,
     OPT_MIN_SCORE_RATE,
     OPT_MIN_COVER_RATE,
     OPT_GENOTYPE,
@@ -108,7 +109,7 @@ enum Options
 
 #define DEFAULT_MIN_EVENT_LEN 100
 
-#define DEFAULT_MIN_SOFT_SIZE 10
+#define DEFAULT_MIN_SOFT_SIZE 15
 
 #define DEFAULT_SPECIAL_MIN_MQ 20
 
@@ -196,6 +197,7 @@ void Parameters::Set(const char** argv, int argc)
         {"mq",   NULL, FALSE},
         {"smq",   NULL, FALSE},
         {"dt",  NULL, FALSE},
+        {"mss",  NULL, FALSE},
         {"msr",  NULL, FALSE},
         {"mcr",  NULL, FALSE},
         {"gt",  NULL, FALSE},
@@ -330,6 +332,14 @@ void Parameters::Set(const char** argv, int argc)
                     TGM_ErrQuit("ERROR: Please specify at least one type of SV to detect.\n");
 
                 alignerPars.detectSet = detectPars.detectSet;
+
+                break;
+            case OPT_MIN_SOFT_SIZE:
+                if (opts[i].value != NULL)
+                    detectPars.minSoftSize = atoi(opts[i].value);
+
+                if (detectPars.minSoftSize <= 0)
+                    TGM_ErrQuit("ERROR: %s is an invalid minimum soft size. (0 - INF]\n", opts[i].value);
 
                 break;
             case OPT_MIN_SCORE_RATE:
@@ -545,6 +555,7 @@ void Parameters::ShowHelp(void) const
     printf("                     -mq   INT    minimum mapping quality for pairs other than special pairs [20]\n");
     printf("                     -smq  INT    minimum mapping quality for special pairs [20]\n");
     printf("                     -dt   INT    detection set [0xffffffff: report all types of SV]\n");
+    printf("                     -mss  INT    minimum size of soft clipped reads for split alignment candidate. [15]\n");
     printf("                     -mcr  FLOAT  minimum cover rate for split alignments [0.85]\n");
     printf("                     -msr  FLOAT  minimum score rate for split alignments [0.8]\n");
     printf("                     -gt   FLAG   do genotyping for detected SV events [false]\n");
