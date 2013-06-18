@@ -542,36 +542,14 @@ void MoveAlInAlmapToAlmaps(
   al_map2->clear();
 }
 
-bool ConvertBamAlignmentToBam1t(
+bool ConvertBamAlignmentToQueryRegion(
     const BamTools::BamAlignment& bal,
-    bam1_t* b1t) {
-  b1t->core.l_qname = 1;
-  b1t->core.n_cigar = 0;
-  b1t->core.l_qseq  = bal.Length;
-
-  b1t->l_aux    = 0;
-  b1t->data_len = b1t->core.l_qname + (b1t->core.l_qseq + 1) / 2;
-  b1t->m_data   = b1t->data_len;
-  b1t->data =(uint8_t*) calloc(b1t->m_data, sizeof(uint8_t));
-
-  b1t->data[0] = '\0';
-  uint8_t* ptr = b1t->data + 1;
-  for (int32_t i = 0; i < bal.Length; ++i) {
-    uint8_t cur;
-    switch(bal.QueryBases[i]) {
-      case 'A': cur = 1;  break;
-      case 'C': cur = 2;  break;
-      case 'G': cur = 4;  break;
-      case 'T': cur = 8;  break;
-      default:  cur = 15; break;
-    }
-    if ((i % 2) == 0) {
-      *ptr = cur << 4;
-    } else {
-      *ptr |= cur;
-      ++ptr;
-    }
-  }
+    SR_QueryRegion* qr) {
+  qr->orphanSeq = (char*)malloc(bal.Length + 1);
+  memcpy(qr->orphanSeq, bal.QueryBases.c_str(), bal.Length);
+  qr->orphanSeq[bal.Length] = '\0';
+  qr->pOrphan = bam_init1();
+  qr->pOrphan->core.l_qseq  = bal.Length;
 
   return true;
 }
@@ -584,8 +562,8 @@ void LoadHash(
     Scissors::HashesCollection* hashes_collection) {
 
   SR_QueryRegion* query_region = SR_QueryRegionAlloc();
-  query_region->pOrphan = bam_init1();
-  ConvertBamAlignmentToBam1t(bal, query_region->pOrphan);
+  //query_region->pOrphan = bam_init1();
+  ConvertBamAlignmentToQueryRegion(bal, query_region);
 
   HashRegionTableInit(hashes, bal.Length);
   SR_QueryRegionSetRangeSpecial(query_region, ref->seqLen);
@@ -593,7 +571,7 @@ void LoadHash(
   hashes_collection->Init(*(hashes->pBestCloseRegions));
   hashes_collection->SortByLength();
 
-  bam_destroy1(query_region->pOrphan);
+  //bam_destroy1(query_region->pOrphan);
   SR_QueryRegionFree(query_region);
 }
 
@@ -623,6 +601,7 @@ int main(int argc, char** argv) {
   // Special hash
   SpecialHasher sp_hasher;
   sp_hasher.SetFastaName(param.ref_fasta.c_str());
+  sp_hasher.SetRefIdStartNo(84);
   if (!sp_hasher.Load()) {
     fprintf(stderr,"ERROR: The program cannot load special references.\n");
     return 1;
