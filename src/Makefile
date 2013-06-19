@@ -11,8 +11,8 @@ export INCLUDE_DIR:=$(SRC_DIR)/include
 
 export CC := gcc
 export CXX := g++
-export CFLAGS := --std=gnu99 -Wall -g
-export CXXFLAGS := -Wall -g
+export CFLAGS := --std=gnu99 -Wall -g -O2
+export CXXFLAGS := -Wall -g -O2
 export PTHREAD := -pthread
 export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
 
