@@ -22,6 +22,8 @@ extern "C" {
 
 using namespace std;
 
+const int kRequestedBases = 50;
+
 void ShowHelp() {
   fprintf(stderr, "\n");
   fprintf(stderr, "Usage: tangram_bam [options] -i <in_bam> -r <ref_fa> -o <out_bam>\n\n");
@@ -531,7 +533,7 @@ void LoadAlignmentsNotInTargetChr(
           LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
-          index = GetHashId(*(hashes_collection.Get(id)), bam_alignment.Length/2, reference_header, reference);
+          index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -546,7 +548,7 @@ void LoadAlignmentsNotInTargetChr(
             LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
-            index = GetHashId(*(hashes_collection2.Get(id)), reverse.size()/2, reference_header, reference);
+            index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -575,7 +577,7 @@ void LoadAlignmentsNotInTargetChr(
           LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
-          index = GetHashId(*(hashes_collection.Get(id)), bam_alignment.Length/2, reference_header, reference);
+          index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -590,7 +592,7 @@ void LoadAlignmentsNotInTargetChr(
             LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
-            index = GetHashId(*(hashes_collection2.Get(id)), reverse.size()/2, reference_header, reference);
+            index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -729,7 +731,7 @@ int main(int argc, char** argv) {
         LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
       if (get_hash) {
         const int id = hashes_collection.GetSize() - 1;
-        index = GetHashId(*(hashes_collection.Get(id)), bam_alignment.Length/2, reference_header, reference);
+        index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
       }
       if (index == -1) { // try the reverse complement sequences
         string reverse;
@@ -742,7 +744,7 @@ int main(int argc, char** argv) {
           LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
         if (get_hash2) {
           const int id = hashes_collection2.GetSize() - 1;
-          index = GetHashId(*(hashes_collection2.Get(id)), reverse.size()/2, reference_header, reference);
+          index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
         }
       }
     }
