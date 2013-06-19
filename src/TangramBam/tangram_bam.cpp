@@ -424,7 +424,7 @@ inline void StoreInBuffer(
 bool ConvertBamAlignmentToQueryRegion(
     const string& bases,
     SR_QueryRegion* qr) {
-  qr->orphanSeq = (char*)malloc(bases.size() + 1);
+  qr->orphanSeq = (char*)malloc(bases.size() + 1); // free in LoadHash
   memcpy(qr->orphanSeq, bases.c_str(), bases.size());
   qr->orphanSeq[bases.size()] = '\0';
   qr->pOrphan = bam_init1(); // free in LoadHash
@@ -449,6 +449,7 @@ bool LoadHash(
   hashes_collection->Init(*(hashes->pBestCloseRegions));
   hashes_collection->SortByLength();
 
+  free(query_region->orphanSeq);
   bam_destroy1(query_region->pOrphan);
   SR_QueryRegionFree(query_region);
 
