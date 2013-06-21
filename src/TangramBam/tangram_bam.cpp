@@ -22,7 +22,8 @@ extern "C" {
 
 using namespace std;
 
-const int kRequestedBases = 50;
+const int kRequestedBases = 20;
+StripedSmithWaterman::Aligner aligner_;
 
 void ShowHelp() {
   fprintf(stderr, "\n");
@@ -115,6 +116,7 @@ void GetReverseComplement(const string& query, string* reverse) {
   }
 }
 
+/*
 void Align(
     const string& query,
     const StripedSmithWaterman::Aligner& aligner,
@@ -123,6 +125,7 @@ void Align(
     alignment->Clear();
     aligner.Align(query.c_str(), kFilter, alignment);
 }
+*/
 
 void GetZa(const Alignment& al, const Alignment& mate, string* za) {
   const bool mate1 = al.bam_alignment.IsFirstMate();
@@ -287,15 +290,9 @@ void StoreAlignment(
   if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
     WriteAlignment(al_map_pre, writer);
     al_map_pre->clear();
-//cerr << "======" << endl;
-//cerr << al_map_pre << endl;
-//cerr << al_map_cur << endl;
     map<string, Alignment> *tmp = al_map_pre;
-//cerr << tmp << endl;
     al_map_pre = al_map_cur;
     al_map_cur = tmp;
-//cerr << al_map_pre << endl;
-//cerr << al_map_cur << endl;
   }
 
   map<string, Alignment>::iterator ite_cur = al_map_cur->find(al->bam_alignment.Name);
@@ -374,7 +371,7 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
 
   return true;
 }
-
+/*
 int PickBestAlignment(const int& request_score, 
                       const StripedSmithWaterman::Alignment& alignment, 
 		      const SpecialReference& s_ref) {
@@ -405,7 +402,7 @@ int PickBestAlignment(const int& request_score,
 
   return -1;
 }
-
+*/
 inline bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
   if (!al.IsMapped()) return true;
   if (al.RefID != al.MateRefID) return true;
@@ -467,20 +464,64 @@ int GetHashId(
     const BestRegion& region,
     const unsigned int& required_length,
     const SR_RefHeader* reference_header,
-    const SR_Reference* reference_special) {
+    const SR_Reference* reference_special,
+    SR_RefView** special_ref_view,
+    uint32_t* pos) {
   if (region.length < required_length) return -1;
 
   int32_t ref_id = 0;
-  uint32_t pos = 0;
+  //uint32_t pos = 0;
+  *pos = 0;
 
-  SR_RefView* special_ref_view = SR_RefViewAlloc();
+  //SR_RefView* special_ref_view = SR_RefViewAlloc();
   const SR_Status ok = 
-    SR_GetRefFromSpecialPos(special_ref_view, &ref_id, &pos, reference_header, reference_special, region.refBegins[0]);
+    SR_GetRefFromSpecialPos(*special_ref_view, &ref_id, pos, reference_header, reference_special, region.refBegins[0]);
 
-  SR_RefViewFree(special_ref_view);
+  //SR_RefViewFree(special_ref_view);
 
   if (ok != SR_OK) return -1;
   else return ref_id;
+}
+
+int GetAlignment(
+    const BamTools::BamAlignment& bam_alignment,
+    const BestRegion& region,
+    const SR_RefHeader* reference_header,
+    const SR_Reference* reference_special) {
+  
+  uint32_t pos = 0;
+  SR_RefView* special_ref_view = SR_RefViewAlloc();
+  const int special_ref_id = GetHashId(region, kRequestedBases, reference_header, reference_special, &special_ref_view, &pos);
+
+  if (special_ref_id == -1) {
+    SR_RefViewFree(special_ref_view);
+    return -1;
+  }
+
+  int forward_shift = 0;
+  if (pos < bam_alignment.Length) forward_shift = pos;
+  else forward_shift = bam_alignment.Length;
+
+  int backward_shift = 0;
+  if ((pos + bam_alignment.Length + 1) > special_ref_view->seqLen) backward_shift = special_ref_view->seqLen - pos - 1;
+  else backward_shift = bam_alignment.Length;
+
+  int begin = region.refBegins[0] - forward_shift;
+  int end   = region.refBegins[0] + backward_shift;
+
+  StripedSmithWaterman::Alignment alignment;
+  const char* ref = reference_special->sequence + begin;
+  const int ref_length = end - begin + 1;
+  aligner_.Align(bam_alignment.QueryBases.c_str(), ref, ref_length, kFilter, &alignment);
+
+  int reauired_score = (bam_alignment.Length > 100) ? 140 : (bam_alignment.Length * 1.4);   
+  if (alignment.sw_score < reauired_score) {
+    SR_RefViewFree(special_ref_view);
+    return -1;
+  } else {
+    SR_RefViewFree(special_ref_view);
+    return special_ref_id;
+  }
 }
 
 void LoadAlignmentsNotInTargetChr(
@@ -533,7 +574,8 @@ void LoadAlignmentsNotInTargetChr(
           LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
-          index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -548,7 +590,8 @@ void LoadAlignmentsNotInTargetChr(
             LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
-            index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -577,7 +620,8 @@ void LoadAlignmentsNotInTargetChr(
           LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
-          index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -592,7 +636,8 @@ void LoadAlignmentsNotInTargetChr(
             LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
-            index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
@@ -731,7 +776,8 @@ int main(int argc, char** argv) {
         LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
       if (get_hash) {
         const int id = hashes_collection.GetSize() - 1;
-        index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+        //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+        index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
       }
       if (index == -1) { // try the reverse complement sequences
         string reverse;
@@ -744,7 +790,8 @@ int main(int argc, char** argv) {
           LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
         if (get_hash2) {
           const int id = hashes_collection2.GetSize() - 1;
-          index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+          //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
         }
       }
     }
