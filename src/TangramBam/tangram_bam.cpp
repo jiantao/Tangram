@@ -3,6 +3,12 @@
 #include <limits.h>
 #include <getopt.h>
 
+extern "C" {
+#include "../OutSources/samtools/bam.h"
+#include "SR_HashRegionTable.h"
+#include "SR_QueryRegion.h"
+}
+
 #include <vector>
 #include <string>
 #include <iostream>
@@ -11,8 +17,13 @@
 #include "api/BamWriter.h"
 #include "../OutSources/fasta/Fasta.h"
 #include "../OutSources/stripedSW/ssw_cpp.h"
+#include "special_hasher.h"
+#include "hashes_collection.h"
 
 using namespace std;
+
+const int kRequestedBases = 20;
+StripedSmithWaterman::Aligner aligner_;
 
 void ShowHelp() {
   fprintf(stderr, "\n");
@@ -105,6 +116,7 @@ void GetReverseComplement(const string& query, string* reverse) {
   }
 }
 
+/*
 void Align(
     const string& query,
     const StripedSmithWaterman::Aligner& aligner,
@@ -113,6 +125,7 @@ void Align(
     alignment->Clear();
     aligner.Align(query.c_str(), kFilter, alignment);
 }
+*/
 
 void GetZa(const Alignment& al, const Alignment& mate, string* za) {
   const bool mate1 = al.bam_alignment.IsFirstMate();
@@ -277,15 +290,9 @@ void StoreAlignment(
   if ((static_cast<int>(al_map_cur->size()) > kAlignmentMapSize)) {
     WriteAlignment(al_map_pre, writer);
     al_map_pre->clear();
-//cerr << "======" << endl;
-//cerr << al_map_pre << endl;
-//cerr << al_map_cur << endl;
     map<string, Alignment> *tmp = al_map_pre;
-//cerr << tmp << endl;
     al_map_pre = al_map_cur;
     al_map_cur = tmp;
-//cerr << al_map_pre << endl;
-//cerr << al_map_cur << endl;
   }
 
   map<string, Alignment>::iterator ite_cur = al_map_cur->find(al->bam_alignment.Name);
@@ -364,7 +371,7 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
 
   return true;
 }
-
+/*
 int PickBestAlignment(const int& request_score, 
                       const StripedSmithWaterman::Alignment& alignment, 
 		      const SpecialReference& s_ref) {
@@ -373,6 +380,7 @@ int PickBestAlignment(const int& request_score,
   fprintf(stderr, "SSW ref_begin: %d, ref_end: %d\n", alignment.ref_begin, alignment.ref_end);
   fprintf(stderr, "cigar: %s\n", alignment.cigar_string.c_str());
 #endif
+
   if (alignment.sw_score < (request_score * 1.4)) {
     return -1; // no proper alignment is found
   } else {
@@ -394,7 +402,7 @@ int PickBestAlignment(const int& request_score,
 
   return -1;
 }
-
+*/
 inline bool IsProblematicAlignment(const BamTools::BamAlignment& al) {
   if (!al.IsMapped()) return true;
   if (al.RefID != al.MateRefID) return true;
@@ -412,9 +420,115 @@ inline void StoreInBuffer(
   ((*al_maps)[ref_id])[al->bam_alignment.Name] = *al;
 }
 
+bool ConvertBamAlignmentToQueryRegion(
+    const string& bases,
+    SR_QueryRegion* qr) {
+  qr->orphanSeq = (char*)malloc(bases.size() + 1); // free in LoadHash
+  memcpy(qr->orphanSeq, bases.c_str(), bases.size());
+  qr->orphanSeq[bases.size()] = '\0';
+  qr->pOrphan = bam_init1(); // free in LoadHash
+  qr->pOrphan->core.l_qseq  = bases.size();
+
+  return true;
+}
+
+bool LoadHash(
+    const string& bases,
+    const SR_Reference* ref,
+    const SR_InHashTable* hash_table,
+    HashRegionTable* hashes,
+    Scissors::HashesCollection* hashes_collection) {
+
+  SR_QueryRegion* query_region = SR_QueryRegionAlloc();
+  ConvertBamAlignmentToQueryRegion(bases, query_region);
+
+  HashRegionTableInit(hashes, bases.size());
+  SR_QueryRegionSetRangeSpecial(query_region, ref->seqLen);
+  HashRegionTableLoad(hashes, hash_table, query_region);
+  hashes_collection->Init(*(hashes->pBestCloseRegions));
+  hashes_collection->SortByLength();
+
+  free(query_region->orphanSeq);
+  bam_destroy1(query_region->pOrphan);
+  SR_QueryRegionFree(query_region);
+
+  if ((hashes_collection->Get(hashes_collection->GetSize() - 1) == NULL))
+    return false;
+  if ((hashes_collection->Get(hashes_collection->GetSize() - 1)->length == 0))
+    return false;
+
+  return true;
+}
+
+int GetHashId(
+    const BestRegion& region,
+    const unsigned int& required_length,
+    const SR_RefHeader* reference_header,
+    const SR_Reference* reference_special,
+    SR_RefView** special_ref_view,
+    uint32_t* pos) {
+  if (region.length < required_length) return -1;
+
+  int32_t ref_id = 0;
+  //uint32_t pos = 0;
+  *pos = 0;
+
+  //SR_RefView* special_ref_view = SR_RefViewAlloc();
+  const SR_Status ok = 
+    SR_GetRefFromSpecialPos(*special_ref_view, &ref_id, pos, reference_header, reference_special, region.refBegins[0]);
+
+  //SR_RefViewFree(special_ref_view);
+
+  if (ok != SR_OK) return -1;
+  else return ref_id;
+}
+
+int GetAlignment(
+    const BamTools::BamAlignment& bam_alignment,
+    const BestRegion& region,
+    const SR_RefHeader* reference_header,
+    const SR_Reference* reference_special) {
+  
+  uint32_t pos = 0;
+  SR_RefView* special_ref_view = SR_RefViewAlloc();
+  const int special_ref_id = GetHashId(region, kRequestedBases, reference_header, reference_special, &special_ref_view, &pos);
+
+  if (special_ref_id == -1) {
+    SR_RefViewFree(special_ref_view);
+    return -1;
+  }
+
+  int forward_shift = 0;
+  if (pos < bam_alignment.Length) forward_shift = pos;
+  else forward_shift = bam_alignment.Length;
+
+  int backward_shift = 0;
+  if ((pos + bam_alignment.Length + 1) > special_ref_view->seqLen) backward_shift = special_ref_view->seqLen - pos - 1;
+  else backward_shift = bam_alignment.Length;
+
+  int begin = region.refBegins[0] - forward_shift;
+  int end   = region.refBegins[0] + backward_shift;
+
+  StripedSmithWaterman::Alignment alignment;
+  const char* ref = reference_special->sequence + begin;
+  const int ref_length = end - begin + 1;
+  aligner_.Align(bam_alignment.QueryBases.c_str(), ref, ref_length, kFilter, &alignment);
+
+  int reauired_score = (bam_alignment.Length > 100) ? 140 : (bam_alignment.Length * 1.4);   
+  if (alignment.sw_score < reauired_score) {
+    SR_RefViewFree(special_ref_view);
+    return -1;
+  } else {
+    SR_RefViewFree(special_ref_view);
+    return special_ref_id;
+  }
+}
+
 void LoadAlignmentsNotInTargetChr(
     const int& target_ref_id,
-    const StripedSmithWaterman::Aligner& aligner,
+    const SR_Reference* reference,
+    const SR_InHashTable* hash_table,
+    const SR_RefHeader* reference_header,
     const SpecialReference& s_ref,
     BamTools::BamReader* reader,
     vector<map<string, Alignment> >* al_maps) {
@@ -451,19 +565,36 @@ void LoadAlignmentsNotInTargetChr(
 
   // Load alignments in region1
   if (has_region1 && reader->SetRegion(region1)) {
+    HashRegionTable* hashes = HashRegionTableAlloc();
     while (reader->GetNextAlignment(bam_alignment)) {
       int index = -1;
       if (bam_alignment.MateRefID == target_ref_id) {
-        Align(bam_alignment.QueryBases, aligner, &alignment);
-        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        Scissors::HashesCollection hashes_collection;
+        const bool get_hash = 
+          LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
+        if (get_hash) {
+          const int id = hashes_collection.GetSize() - 1;
+          //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+        }
+        //Align(bam_alignment.QueryBases, aligner, &alignment);
+        //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         if (index == -1) { // try the reverse complement sequences
           string reverse;
           GetReverseComplement(bam_alignment.QueryBases, &reverse);
           #ifdef TB_VERBOSE_DEBUG
           fprintf(stderr, "%s\n", reverse.c_str());
           #endif
-          Align(reverse, aligner, &alignment);
-          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+          Scissors::HashesCollection hashes_collection2;
+          const bool get_hash = 
+            LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
+          if (get_hash) {
+            const int id = hashes_collection2.GetSize() - 1;
+            //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+          }
+          //Align(reverse, aligner, &alignment);
+          //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
       #ifdef TB_VERBOSE_DEBUG
       fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
@@ -475,23 +606,41 @@ void LoadAlignmentsNotInTargetChr(
       StoreInBuffer(&al, al_maps);
       } // end of
     }
+    HashRegionTableFree(hashes);
   }
 
   // Load alignments in region2
   if (has_region2&& reader->SetRegion(region2)) {
+    HashRegionTable* hashes = HashRegionTableAlloc();
     while (reader->GetNextAlignment(bam_alignment)) {
       int index = -1;
       if (bam_alignment.MateRefID == target_ref_id) {
-        Align(bam_alignment.QueryBases, aligner, &alignment);
-        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        Scissors::HashesCollection hashes_collection;
+        const bool get_hash = 
+          LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
+        if (get_hash) {
+          const int id = hashes_collection.GetSize() - 1;
+          //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+        }
+        //Align(bam_alignment.QueryBases, aligner, &alignment);
+        //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         if (index == -1) { // try the reverse complement sequences
           string reverse;
           GetReverseComplement(bam_alignment.QueryBases, &reverse);
           #ifdef TB_VERBOSE_DEBUG
           fprintf(stderr, "%s\n", reverse.c_str());
           #endif
-          Align(reverse, aligner, &alignment);
-          index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+          Scissors::HashesCollection hashes_collection2;
+          const bool get_hash = 
+            LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
+          if (get_hash) {
+            const int id = hashes_collection2.GetSize() - 1;
+            //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+          }
+          //Align(reverse, aligner, &alignment);
+          //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
       #ifdef TB_VERBOSE_DEBUG
       fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
@@ -503,6 +652,7 @@ void LoadAlignmentsNotInTargetChr(
       StoreInBuffer(&al, al_maps);
       } // end if
     }
+    HashRegionTableFree(hashes);
   }
 }
 
@@ -557,6 +707,18 @@ int main(int argc, char** argv) {
     //region_set = true;
   }
 
+  // Special hash
+  SpecialHasher sp_hasher;
+  sp_hasher.SetFastaName(param.ref_fasta.c_str());
+  if (!sp_hasher.Load()) {
+    fprintf(stderr,"ERROR: The program cannot load special references.\n");
+    return 1;
+  }
+  const SR_Reference* reference = sp_hasher.GetReference();
+  const SR_InHashTable* hash_table = sp_hasher.GetHashTable();
+  const SR_RefHeader* reference_header = sp_hasher.GetReferenceHeader();
+  HashRegionTable* hashes = HashRegionTableAlloc();
+
   // Open fasta
   FastaReference fasta;
   LoadReference(param.ref_fasta.c_str(), &fasta);
@@ -566,8 +728,8 @@ int main(int argc, char** argv) {
   ConcatenateSpecialReference(&fasta, &s_ref);
 
   // Build SSW aligner
-  StripedSmithWaterman::Aligner aligner;
-  aligner.SetReferenceSequence(s_ref.concatnated.c_str(), s_ref.concatnated_len);
+  //StripedSmithWaterman::Aligner aligner;
+  //aligner.SetReferenceSequence(s_ref.concatnated.c_str(), s_ref.concatnated_len);
 
   // CORE ALGORITHM
   BamTools::BamAlignment bam_alignment;
@@ -576,8 +738,6 @@ int main(int argc, char** argv) {
   StripedSmithWaterman::Alignment alignment;
   Alignment al;
 
-//cerr << al_map_pre << "\t" << al_map_cur << endl;
-  
   // Load alignments sitting in other chromosomes and their mates are in the target chr
   if (target_ref_id != -1) {
     string indexfilename = infilename + ".bai";
@@ -586,7 +746,7 @@ int main(int argc, char** argv) {
       reader.CreateIndex();
       fprintf(stderr, "Warning: %s has been created.\n", indexfilename.c_str());
     }
-    LoadAlignmentsNotInTargetChr(target_ref_id, aligner, s_ref, &reader, &al_maps);
+    LoadAlignmentsNotInTargetChr(target_ref_id, reference, hash_table, reference_header, s_ref, &reader, &al_maps);
     const BamTools::RefVector& references = reader.GetReferenceData();
     const BamTools::RefData& ref_data = references.at(target_ref_id);
     reader.SetRegion(target_ref_id, 0, target_ref_id, ref_data.RefLength);
@@ -611,16 +771,28 @@ int main(int argc, char** argv) {
     #endif
     int index = -1;
     if (IsProblematicAlignment(bam_alignment)) {
-      Align(bam_alignment.QueryBases, aligner, &alignment);
-      index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+      Scissors::HashesCollection hashes_collection;
+      const bool get_hash = 
+        LoadHash(bam_alignment.QueryBases, reference, hash_table, hashes, &hashes_collection);
+      if (get_hash) {
+        const int id = hashes_collection.GetSize() - 1;
+        //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
+        index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+      }
       if (index == -1) { // try the reverse complement sequences
         string reverse;
         GetReverseComplement(bam_alignment.QueryBases, &reverse);
         #ifdef TB_VERBOSE_DEBUG
         fprintf(stderr, "%s\n", reverse.c_str());
         #endif
-        Align(reverse, aligner, &alignment);
-        index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
+        Scissors::HashesCollection hashes_collection2;
+        const bool get_hash2 = 
+          LoadHash(reverse, reference, hash_table, hashes, &hashes_collection2);
+        if (get_hash2) {
+          const int id = hashes_collection2.GetSize() - 1;
+          //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
+          index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+        }
       }
     }
       
@@ -641,7 +813,7 @@ int main(int argc, char** argv) {
 	else
 	  StoreAlignment(&al, &al_maps, &writer);
       }
-    } // end if
+    } // end if 
   }
 
   // Close
@@ -651,4 +823,6 @@ int main(int argc, char** argv) {
   al_map2.clear();
   reader.Close();
   writer.Close();
+
+  HashRegionTableFree(hashes);
 }

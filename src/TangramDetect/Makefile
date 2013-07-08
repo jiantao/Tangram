@@ -4,11 +4,14 @@ CSOURCES:=$(shell ls *.c)
 OBJS:=$(addprefix $(OBJ_DIR)/,$(SOURCES:.cpp=.o))
 COBJS:=$(addprefix $(OBJ_DIR)/,$(CSOURCES:.c=.o))
 
+LIBS=$(OBJ_DIR)/ssw.o \
+     $(OBJ_DIR)/md5.o
+
 PROGRAM:=$(BIN_DIR)/tangram_detect
 
 $(PROGRAM): $(OBJS) $(COBJS)
 	@echo "  * linking $(PROGRAM)"
-	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(OBJ_DIR)/ssw.o -lbamtools -lz
+	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(LIBS) -lbamtools -lz
 
 $(OBJS): $(SOURCES)
 	@echo "  * compiling" $(*F).cpp
