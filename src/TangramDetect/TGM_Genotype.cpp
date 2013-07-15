@@ -227,7 +227,10 @@ void Genotype::SetSampleCountSpecial(const SpecialEvent& rpSpecial)
         unsigned int sampleID = 0;
 
         if (libTable.GetSampleID(sampleID, readGrpID))
+        {
             ++(sampleCount[sampleID].support);
+            ++(sampleCount[sampleID].rp3);
+        }
     }
 
     for (unsigned int k = 0; k != rpSpecial.numFrag[1]; ++k)
@@ -237,7 +240,10 @@ void Genotype::SetSampleCountSpecial(const SpecialEvent& rpSpecial)
         unsigned int sampleID = 0;
 
         if (libTable.GetSampleID(sampleID, readGrpID))
+        {
             ++(sampleCount[sampleID].support);
+            ++(sampleCount[sampleID].rp5);
+        }
     }
 }
 
@@ -255,7 +261,11 @@ void Genotype::SetSampleCountSplit(const SplitEvent& splitEvent)
             readGrpID = bamPairTable.orphanPairs[origIdx].readGrpID;
 
         if (libTable.GetSampleID(sampleID, readGrpID))
+        {
             ++(sampleCount[sampleID].support);
+            if (splitEvent.first3[i].isMajor)
+                ++(sampleCount[sampleID].sr3);
+        }
     }
 
     for (unsigned int i = 0; i != splitEvent.size5; ++i)
@@ -270,7 +280,11 @@ void Genotype::SetSampleCountSplit(const SplitEvent& splitEvent)
             readGrpID = bamPairTable.orphanPairs[origIdx].readGrpID;
 
         if (libTable.GetSampleID(sampleID, readGrpID))
+        {
             ++(sampleCount[sampleID].support);
+            if (splitEvent.first5[i].isMajor)
+                ++(sampleCount[sampleID].sr5);
+        }
     }
 }
 

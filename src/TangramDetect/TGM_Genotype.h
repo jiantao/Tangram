@@ -34,6 +34,14 @@ namespace Tangram
         uint32_t nonSupport;
 
         uint32_t support;
+
+        uint32_t rp3;
+
+        uint32_t rp5;
+
+        uint32_t sr3;
+
+        uint32_t sr5;
     };
 
     class Genotype
