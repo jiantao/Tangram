@@ -619,7 +619,10 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
         unsigned int numSamples = sampleNames.Size();
         for (unsigned int i = 0; i != numSamples; ++i)
         {
-            formatted << "\t.:.:.:.";
+            formatted << "\t.:.";
+            formatted << ":" << genotype.sampleCount[i].nonSupport << "," << genotype.sampleCount[i].support;
+            formatted << ":" << genotype.sampleCount[i].rp3 << "," << genotype.sampleCount[i].rp5;
+            formatted << "," << genotype.sampleCount[i].sr3 << "," << genotype.sampleCount[i].sr5;
         }
     }
 
