@@ -23,7 +23,7 @@
 using namespace std;
 using namespace Tangram;
 
-#ifdef DEBUG_1
+#ifdef TD_VERBOSE_DEBUG
 
 static void CigarToString(std::string& cigarStr, const uint32_t* cigar, unsigned int cigarLen)
 {
@@ -316,7 +316,7 @@ s_align* SecondMapThread::AlignSecPartial(bool& isRescued, RescuePartial& rescue
 
     init_destroy(pProfile);
 
-#ifdef DEBUG_1
+#ifdef TD_VERBOSE_DEBUG
 
     std::string cigarStr;
     std::string seqStr;
@@ -327,7 +327,7 @@ s_align* SecondMapThread::AlignSecPartial(bool& isRescued, RescuePartial& rescue
     if (passFilter)
     {
 
-#ifdef DEBUG_1
+#ifdef TD_VERBOSE_DEBUG
 
             SeqToString(seqStr, readSeq, readLen);
             const char* strand = isReversed == 1 ? "minus" : "plus";
@@ -356,11 +356,11 @@ s_align* SecondMapThread::AlignSecPartial(bool& isRescued, RescuePartial& rescue
 
             CigarToString(cigarStr, cigar, cigarLen);
 
-            printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%s", firstPartial.refPos, firstPartial.refEnd, refPos + refRegion.start, 
+            fprintf(stderr, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%s", firstPartial.refPos, firstPartial.refEnd, refPos + refRegion.start, 
                     refEnd + refRegion.start, readPos, readEnd, score, strand, rescue, cigarStr.c_str(), seqStr.c_str());
 
             CigarToString(cigarStr, firstPartial.cigar, firstPartial.cigarLen);
-            printf("\t%s\t%s\n", cigarStr.c_str(), fStrand);
+            fprintf(stderr, "\t%s\t%s\n", cigarStr.c_str(), fStrand);
 #endif
 
         return pAlignment;
