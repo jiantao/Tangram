@@ -58,10 +58,7 @@ void TGM_BamHeaderFree(TGM_BamHeader* pBamHeader);
 // return:
 //      number of references (chromosomes)
 //=============================================================== 
-inline int32_t TGM_BamHeaderGetRefNum(const TGM_BamHeader* pBamHeader)
-{
-    return (pBamHeader->pOrigHeader->n_targets);
-}
+inline int32_t TGM_BamHeaderGetRefNum(const TGM_BamHeader* pBamHeader);
 
 //===============================================================
 // function:
@@ -73,10 +70,7 @@ inline int32_t TGM_BamHeaderGetRefNum(const TGM_BamHeader* pBamHeader)
 // return:
 //      the dictionary of reference ID to reference name
 //=============================================================== 
-inline const char** TGM_BamHeaderGetRefNames(const TGM_BamHeader* pBamHeader)
-{
-    return (const char**) pBamHeader->pOrigHeader->target_name;
-}
+inline const char** TGM_BamHeaderGetRefNames(const TGM_BamHeader* pBamHeader);
 
 //===============================================================
 // function:
@@ -88,10 +82,6 @@ inline const char** TGM_BamHeaderGetRefNames(const TGM_BamHeader* pBamHeader)
 // return:
 //      an array contains the length of each chromosome
 //=============================================================== 
-inline const uint32_t* TGM_BamHeaderGetRefLens(const TGM_BamHeader* pBamHeader)
-{
-    return pBamHeader->pOrigHeader->target_len;
-}
-
+inline const uint32_t* TGM_BamHeaderGetRefLens(const TGM_BamHeader* pBamHeader);
 
 #endif  /*TGM_BAMHEADER_H*/

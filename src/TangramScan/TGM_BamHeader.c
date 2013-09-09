@@ -39,3 +39,18 @@ void TGM_BamHeaderFree(TGM_BamHeader* pBamHeader)
     }
 }
 
+
+inline int32_t TGM_BamHeaderGetRefNum(const TGM_BamHeader* pBamHeader)
+{
+    return (pBamHeader->pOrigHeader->n_targets);
+}
+
+inline const char** TGM_BamHeaderGetRefNames(const TGM_BamHeader* pBamHeader)
+{
+    return (const char**) pBamHeader->pOrigHeader->target_name;
+}
+
+inline const uint32_t* TGM_BamHeaderGetRefLens(const TGM_BamHeader* pBamHeader)
+{
+    return pBamHeader->pOrigHeader->target_len;
+}
