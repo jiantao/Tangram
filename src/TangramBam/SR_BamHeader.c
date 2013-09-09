@@ -43,3 +43,14 @@ int32_t SR_BamHeaderGetRefNum(const SR_BamHeader* pBamHeader)
 {
     return (pBamHeader->pOrigHeader->n_targets);
 }
+
+const char** SR_BamHeaderGetRefNames(const SR_BamHeader* pBamHeader)
+{
+    return (const char**) pBamHeader->pOrigHeader->target_name;
+}
+
+const uint32_t* SR_BamHeaderGetRefLens(const SR_BamHeader* pBamHeader)
+{
+    return pBamHeader->pOrigHeader->target_len;
+}
+

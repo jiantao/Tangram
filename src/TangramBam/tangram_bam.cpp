@@ -499,7 +499,7 @@ int GetAlignment(
   }
 
   int forward_shift = 0;
-  if (pos < bam_alignment.Length) forward_shift = pos;
+  if (static_cast <int> (pos) < bam_alignment.Length) forward_shift = pos;
   else forward_shift = bam_alignment.Length;
 
   int backward_shift = 0;
