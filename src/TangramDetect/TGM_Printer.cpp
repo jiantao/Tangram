@@ -304,6 +304,7 @@ void Printer::PrintSpecialHeader(void)
     // output to the standard input
     if (outputGrp.fpSpecial == NULL)
     {
+
         printf("##fileformat=VCFv4.1\n"
                "##fileDate=%s\n"
                "##source=Tangram\n"
@@ -319,8 +320,8 @@ void Printer::PrintSpecialHeader(void)
                " 5' split fragments and 3' split fragments\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
                "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
-               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n",
-	       "##FORMAT=<ID=DF,Number=4,Type=Integer,Description=\"Detect Fragments, detect fragments for RP 5', RP 3', SR 5' and SR 3'\">\n",
+               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n"
+               "##FORMAT=<ID=DF,Number=4,Type=Integer,Description=\"Detect Fragments, detect fragments for RP 5', RP 3', SR 5' and SR 3'\">\n",
                buf);
 
         printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");

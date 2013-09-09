@@ -37,6 +37,7 @@ using namespace std;
 
 #define MD5_CHECKSUM_LEN 16
 
+/*
 namespace {
 static int CompareInt(const void* a, const void* b)
 {
@@ -46,6 +47,7 @@ static int CompareInt(const void* a, const void* b)
     return (*first - *second);
 }
 } // end namespace
+*/
 
 namespace Tangram {
 static void SeqTransfer(char* seq, unsigned int len)
@@ -444,9 +446,23 @@ void Reference::CreatFamily(void)
     }
 }
 
-const char* Reference::GetSpRefName(int& spRefID, int32_t spRefPos) const
+const char* Reference::GetSpRefName(int& spRefID, const int32_t& spRefPos) const
 {
-    spRefID = spRefHeader.endPos.UpperBound(spRefPos, CompareInt);
+    if (spRefHeader.endPos.Size() <= 0) return NULL;
+
+    const int64_t* ptr = spRefHeader.endPos.GetPointer(0);
+
+    int low = 0, high = spRefHeader.endPos.Size() - 1;
+    while (low < high) {
+      int mid  = (low + high) / 2;
+      if (spRefPos <= *(ptr + mid)) high = mid;
+      else low = mid + 1;
+    }
+
+    if (spRefPos <= *(ptr + low)) spRefID = low;
+    else spRefID = -1;
+    
+    //spRefID = spRefHeader.endPos.UpperBound(spRefPos, CompareInt);
     if (spRefID >= 0)
         return spRefHeader.names[spRefID];
     else

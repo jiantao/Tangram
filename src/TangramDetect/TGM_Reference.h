@@ -76,7 +76,7 @@ namespace Tangram
                 return (refID == 0 ? 0 : refHeader.endPos[refID - 1] + 1);
             }
 
-            const char* GetSpRefName(int& spRefID, int32_t spRefPos) const;
+            const char* GetSpRefName(int& spRefID, const int32_t& spRefPos) const;
 
             inline int GetFamilyID(int spRefID) const
             {
