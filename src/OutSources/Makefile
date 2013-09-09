@@ -4,7 +4,7 @@ SSW:=$(OBJ_DIR)/ssw.o $(OBJ_DIR)/ssw_cpp.o
 FASTA:=$(OBJ_DIR)/Fasta.o
 UTIL:=$(OBJ_DIR)/md5.o
 
-libs: $(SSW) $(FASTA) $(UTIL) $(BAM_LIB) $(SAM_LIB)
+libs: $(SSW) $(FASTA) $(BAM_LIB) $(SAM_LIB) $(UTIL)
 
 $(SSW): stripedSW/*
 	@$(MAKE) all --no-print-directory --directory=stripedSW;

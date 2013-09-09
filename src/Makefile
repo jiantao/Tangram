@@ -9,8 +9,8 @@ export BIN_DIR:=$(dir $(SRC_DIR))bin
 export LIB_DIR:=$(SRC_DIR)/lib
 export INCLUDE_DIR:=$(SRC_DIR)/include
 
-export CC := gcc44
-export CXX := g++44
+export CC := gcc
+export CXX := g++
 
 ### Please choose NORMAL or VERBOSE_DEBUG mode ###
 ##############################
