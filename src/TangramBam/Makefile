@@ -7,7 +7,7 @@ COBJS:=$(addprefix $(OBJ_DIR)/,$(CSOURCES:.c=.o))
 PROGRAM:=$(BIN_DIR)/tangram_bam
 
 REQUIRED_OBJS = $(OBJ_DIR)/Fasta.o \
-		$(OBJ_DIR)/split.o \
+                $(OBJ_DIR)/split.o \
 		$(OBJ_DIR)/ssw_cpp.o \
 		$(OBJ_DIR)/ssw.o \
 		$(OBJ_DIR)/md5.o 

@@ -39,3 +39,7 @@ void SR_BamHeaderFree(SR_BamHeader* pBamHeader)
     }
 }
 
+int32_t SR_BamHeaderGetRefNum(const SR_BamHeader* pBamHeader)
+{
+    return (pBamHeader->pOrigHeader->n_targets);
+}

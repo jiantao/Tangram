@@ -19,6 +19,7 @@
 #ifndef  SR_BAMHEADER_H
 #define  SR_BAMHEADER_H
 
+
 #include "../OutSources/samtools/bam.h"
 
 
@@ -59,10 +60,7 @@ void SR_BamHeaderFree(SR_BamHeader* pBamHeader);
 // return:
 //      number of references (chromosomes)
 //=============================================================== 
-inline int32_t SR_BamHeaderGetRefNum(const SR_BamHeader* pBamHeader)
-{
-    return (pBamHeader->pOrigHeader->n_targets);
-}
+inline int32_t SR_BamHeaderGetRefNum(const SR_BamHeader* pBamHeader);
 
 //===============================================================
 // function:
@@ -74,10 +72,7 @@ inline int32_t SR_BamHeaderGetRefNum(const SR_BamHeader* pBamHeader)
 // return:
 //      the dictionary of reference ID to reference name
 //=============================================================== 
-inline const char** SR_BamHeaderGetRefNames(const SR_BamHeader* pBamHeader)
-{
-    return (const char**) pBamHeader->pOrigHeader->target_name;
-}
+inline const char** SR_BamHeaderGetRefNames(const SR_BamHeader* pBamHeader);
 
 //===============================================================
 // function:
@@ -89,9 +84,6 @@ inline const char** SR_BamHeaderGetRefNames(const SR_BamHeader* pBamHeader)
 // return:
 //      an array contains the length of each chromosome
 //=============================================================== 
-inline const uint32_t* SR_BamHeaderGetRefLens(const SR_BamHeader* pBamHeader)
-{
-    return pBamHeader->pOrigHeader->target_len;
-}
+inline const uint32_t* SR_BamHeaderGetRefLens(const SR_BamHeader* pBamHeader);
 
 #endif  /*SR_BAMHEADER_H*/

@@ -25,7 +25,6 @@
 #include "SR_Utilities.h"
 #include "SR_BamInStream.h"
 
-
 //===============================
 // Type and constant definition
 //===============================

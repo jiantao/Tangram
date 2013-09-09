@@ -17,7 +17,6 @@
 #ifndef  SR_BAMINSTREAM_H
 #define  SR_BAMINSTREAM_H
 
-
 #include "../OutSources/samtools/bam.h"
 #include "SR_Types.h"
 #include "SR_BamHeader.h"
@@ -355,6 +354,5 @@ static inline SR_Status SR_BamInStreamPush(SR_BamInStream* pBamInStream, SR_BamN
 //      return value for the actual size of the memory pool
 //================================================================
 unsigned int SR_BamInStreamShrinkPool(SR_BamInStream* pBamInStream, unsigned int newSize);
-
 
 #endif  /*SR_BAMINSTREAM_H*/

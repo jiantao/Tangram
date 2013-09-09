@@ -11,7 +11,7 @@ PROGRAM:=$(BIN_DIR)/tangram_detect
 
 $(PROGRAM): $(OBJS) $(COBJS)
 	@echo "  * linking $(PROGRAM)"
-	@$(CXX) $(CXXFLAGS) $(PTHREAD) -o $@ $^ $(INCLUDES) $(LIBS) -lbamtools -lz
+	@$(CXX) $(CXXFLAGS) -pthread -o $@ $^ $(INCLUDES) $(LIBS) -lbamtools -lz
 
 $(OBJS): $(SOURCES)
 	@echo "  * compiling" $(*F).cpp

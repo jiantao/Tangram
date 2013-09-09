@@ -9,8 +9,8 @@ export BIN_DIR:=$(dir $(SRC_DIR))bin
 export LIB_DIR:=$(SRC_DIR)/lib
 export INCLUDE_DIR:=$(SRC_DIR)/include
 
-export CC := gcc
-export CXX := g++
+export CC := gcc44
+export CXX := g++44
 
 ### Please choose NORMAL or VERBOSE_DEBUG mode ###
 ##############################
@@ -25,7 +25,7 @@ export CXXFLAGS := -Wall -g -O2
 #export CXXFLAGS := -Wall -g -O2 -D TD_VERBOSE_DEBUG
 ##############################
 
-export PTHREAD := -pthread
+#export PTHREAD := -pthread
 export INCLUDES := -I$(INCLUDE_DIR) -L$(LIB_DIR)
 
 SUBDIRS := OutSources \
