@@ -316,20 +316,26 @@ void Printer::PrintSpecialHeader(void)
                "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
                "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
                "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
-               "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
-               " 5' split fragments and 3' split fragments\">\n"
+	       "##INFO=<ID=RP5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
+	       "##INFO=<ID=RP3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
+	       "##INFO=<ID=SR5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
+	       "##INFO=<ID=SR3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
                "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
-               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n"
-               "##FORMAT=<ID=DF,Number=4,Type=Integer,Description=\"Detect Fragments, detect fragments for RP 5', RP 3', SR 5' and SR 3'\">\n",
+               "##FORMAT=<ID=RO,Number=1,Type=Integer,Description=\"Reference allele observation count\">\n"
+	       "##FORMAT=<ID=R5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
+	       "##FORMAT=<ID=R3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
+	       "##FORMAT=<ID=S5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
+	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n",
                buf);
 
         printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
     }
     else // output to a file
     {
-        fprintf(outputGrp.fpSpecial, 
-               "##fileformat=VCFv4.1\n"
+
+        fprintf(outputGrp.fpSpecial,
+	       "##fileformat=VCFv4.1\n"
                "##fileDate=%s\n"
                "##source=Tangram\n"
                "##ALT=<ID=INS:ME:AL,Description=\"Insertion of ALU element\">\n"
@@ -340,12 +346,17 @@ void Printer::PrintSpecialHeader(void)
                "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
                "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
                "##INFO=<ID=MEILEN,Number=1,Type=Integer,Description=\"Inserted length of MEI. -1 means the inserted length is not available.\">\n"
-               "##INFO=<ID=FRAG,Number=4,Type=Integer,Description=\"Detailed information of supporting fragments: 5' read-pair fragments, 3' read-pair fragments,"
-               " 5' split fragments and 3' split fragments\">\n"
+	       "##INFO=<ID=RP5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
+	       "##INFO=<ID=RP3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
+	       "##INFO=<ID=SR5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
+	       "##INFO=<ID=SR3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n"
                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"
                "##FORMAT=<ID=GL,Number=3,Type=Float,Description=\"Genotype likelihood\">\n"
-               "##FORMAT=<ID=AC,Number=2,Type=Integer,Description=\"Allele Count, allele count for reference and alternatives\">\n"
-               "##FORMAT=<ID=DF,Number=4,Type=Integer,Description=\"Detect Fragments, detect fragments for RP 5', RP 3', SR 5' and SR 3'\">\n",
+               "##FORMAT=<ID=RO,Number=1,Type=Integer,Description=\"Reference allele observation count\">\n"
+	       "##FORMAT=<ID=R5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
+	       "##FORMAT=<ID=R3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
+	       "##FORMAT=<ID=S5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
+	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n",
                buf);
 
         fprintf(outputGrp.fpSpecial, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
@@ -494,7 +505,10 @@ void Printer::PrintSpecial(const PrintElmnt& element)
     formatted.clear();
     formatted.str("");
 
-    formatted << "FRAG=" << features.rpFrag[0] << "," << features.rpFrag[1] << "," << features.splitFrag[0] << "," << features.splitFrag[1] << ";";
+    formatted << "RP5=" << features.rpFrag[0] << ";"
+              << "RP3=" << features.rpFrag[1] << ";" 
+	      << "SR5=" << features.splitFrag[0] << ";" 
+	      << "SR3=" << features.splitFrag[1] << ";";
 
     if (outputGrp.fpSpecial == NULL)
     {
@@ -607,9 +621,11 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 1] << ",";
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 2];
 
-            formatted << ":" << genotype.sampleCount[i].nonSupport << "," << genotype.sampleCount[i].support;
-            formatted << ":" << genotype.sampleCount[i].rp3 << "," << genotype.sampleCount[i].rp5;
-            formatted << "," << genotype.sampleCount[i].sr3 << "," << genotype.sampleCount[i].sr5;
+            formatted << ":" << genotype.sampleCount[i].nonSupport
+                      << ":" << genotype.sampleCount[i].rp3 
+		      << ":" << genotype.sampleCount[i].rp5
+                      << ":" << genotype.sampleCount[i].sr3 
+		      << ":" << genotype.sampleCount[i].sr5;
         }
     }
     else
@@ -620,20 +636,25 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
         for (unsigned int i = 0; i != numSamples; ++i)
         {
             formatted << "\t.:.";
-            formatted << ":" << genotype.sampleCount[i].nonSupport << "," << genotype.sampleCount[i].support;
-            formatted << ":" << genotype.sampleCount[i].rp3 << "," << genotype.sampleCount[i].rp5;
-            formatted << "," << genotype.sampleCount[i].sr3 << "," << genotype.sampleCount[i].sr5;
+
+	    formatted << "0.00,0.00,0.00";
+
+            formatted << ":" << genotype.sampleCount[i].nonSupport
+                      << ":" << genotype.sampleCount[i].rp3 
+		      << ":" << genotype.sampleCount[i].rp5
+                      << ":" << genotype.sampleCount[i].sr3 
+		      << ":" << genotype.sampleCount[i].sr5;
         }
     }
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("\tGT:GL:AC:DF");
+        printf("\tGT:GL:RO:R5:R3:S5:S3");
         printf("%s\n", formatted.str().c_str());
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "\tGT:GL:AC:DF");
+        fprintf(outputGrp.fpSpecial, "\tGT:GL:RO:R5:R3:S5:S3");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
     }
 }
@@ -646,20 +667,33 @@ void Printer::PrintSampleInfo(const Genotype& genotype)
     unsigned int size = genotype.sampleCount.Size();
     for (unsigned int i = 0; i != size; ++i)
     {
-        if (genotype.sampleCount[i].support > 0)
-            formatted << "\t./1:" << genotype.sampleCount[i].support;
-        else
-            formatted << "\t0/0:" << genotype.sampleCount[i].support;
+        if (genotype.sampleCount[i].support > 0) {
+            formatted << "\t./1";
+	    
+            formatted << ":" << genotype.sampleCount[i].nonSupport
+                      << ":" << genotype.sampleCount[i].rp3 
+		      << ":" << genotype.sampleCount[i].rp5
+                      << ":" << genotype.sampleCount[i].sr3 
+		      << ":" << genotype.sampleCount[i].sr5;
+        } else {
+            formatted << "\t0/0";
+
+            formatted << ":" << genotype.sampleCount[i].nonSupport
+                      << ":" << genotype.sampleCount[i].rp3 
+		      << ":" << genotype.sampleCount[i].rp5
+                      << ":" << genotype.sampleCount[i].sr3 
+		      << ":" << genotype.sampleCount[i].sr5;
+	}
     }
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("\tGT:AD");
+        printf("\tGT:GL:RO:R5:R3:S5:S3");
         printf("%s\n", formatted.str().c_str());
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "\tGT:AD");
+        fprintf(outputGrp.fpSpecial, "\tGT:GL:RO:R5:R3:S5:S3");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
     }
 }
