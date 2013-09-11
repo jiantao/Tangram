@@ -688,12 +688,12 @@ void Printer::PrintSampleInfo(const Genotype& genotype)
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("\tGT:GL:RO:R5:R3:S5:S3");
+        printf("\tGT:RO:R5:R3:S5:S3");
         printf("%s\n", formatted.str().c_str());
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "\tGT:GL:RO:R5:R3:S5:S3");
+        fprintf(outputGrp.fpSpecial, "\tGT:RO:R5:R3:S5:S3");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
     }
 }
