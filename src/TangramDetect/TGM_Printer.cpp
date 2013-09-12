@@ -312,6 +312,7 @@ void Printer::PrintSpecialHeader(void)
                "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
                "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
                "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERVK element\">\n"
+	       "##INFO=<ID=TYPE,Number=A,Type=String,Description=\"The type of insertion, either AL, L1, SV, or HE.\">\n"
                "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
                "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
                "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
@@ -342,6 +343,7 @@ void Printer::PrintSpecialHeader(void)
                "##ALT=<ID=INS:ME:L1,Description=\"Insertion of L1 element\">\n"
                "##ALT=<ID=INS:ME:SV,Description=\"Insertion of SVA element\">\n"
                "##ALT=<ID=INS:ME:HE,Description=\"Insertion of HERVK element\">\n"
+	       "##INFO=<ID=TYPE,Number=A,Type=String,Description=\"The type of insertion, either AL, L1, SV, or HE.\">\n"
                "##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description=\"Imprecise structural variation\">\n"
                "##INFO=<ID=STRAND,Number=1,Type=String,Description=\"Orientation of the inserted mobile elements. '/' means the strand information is not available\">\n"
                "##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants. Only presents if the 'IMPRECISE' flag is set\">\n"
@@ -504,6 +506,9 @@ void Printer::PrintSpecial(const PrintElmnt& element)
 
     formatted.clear();
     formatted.str("");
+
+    if (features.spRefName)
+      formatted << "TYPE=" << features.spRefName << ";";
 
     formatted << "RP5=" << features.rpFrag[0] << ";"
               << "RP3=" << features.rpFrag[1] << ";" 
