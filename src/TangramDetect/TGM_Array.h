@@ -19,6 +19,7 @@
 #ifndef  TGM_ARRAY_H
 #define  TGM_ARRAY_H
 
+#include <string.h>
 #include <iostream>
 #include <cstdlib>
 
