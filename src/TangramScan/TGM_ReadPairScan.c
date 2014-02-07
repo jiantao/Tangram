@@ -95,7 +95,7 @@ void TGM_ReadPairScan(const TGM_ReadPairScanPars* pScanPars)
         TGM_FragLenHistArrayInit(pHistArray, pLibTable->size - oldSize);
 
         // do not load cross pairs when build the fragment length distribution
-        TGM_Bool loadCross = FALSE;
+        TGM_Bool loadCross = TRUE;
 
         // filter data for the no-za sort mode
         TGM_FilterDataNoZA filterData = {pLibTable, TRUE};
@@ -154,8 +154,9 @@ void TGM_ReadPairScan(const TGM_ReadPairScanPars* pScanPars)
                 if (TGM_IsNormalPair(&pairStats, &zaTag, &zaStatus, pMateInfo, &backHistIndex, pAlgns, retNum, pLibTable, pScanPars->minMQ))
                     TGM_FragLenHistArrayUpdate(pHistArray, backHistIndex, pairStats.fragLen);
 
-                if (zaStatus == TGM_OK)
+                if (zaStatus == TGM_OK) {
                     TGM_SpecialIDUpdate(pSpecialID, &zaTag);
+		}
             }
 
         }while(bamStatus == TGM_OK);
