@@ -1057,10 +1057,11 @@ TGM_Status TGM_LoadZAtag(TGM_ZAtag* pZAtag, const bam1_t* pUpAlgn)
 {
     uint8_t* zaPos = bam_aux_get(pUpAlgn, "ZA");
     const char* zaStr = NULL;
-    if (zaPos != NULL)
+    if (zaPos != NULL) {
         zaStr = bam_aux2Z(zaPos);
-    else
+    } else {
         return TGM_NOT_FOUND;
+    }
 
     // set the first character of the special reference name to be ' '
     // we can later check if the pair hit any special references

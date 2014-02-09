@@ -127,7 +127,7 @@ static inline TGM_StreamCode TGM_ReadPairFilter(const bam1_t* pAlignment, void* 
     }
 
     // any reads aligned to different chromosome will be kept as SV candidates
-    if (!(*pLoadCross) && pAlignment->core.tid != pAlignment->core.mtid)
+    if (!(*pLoadCross) && pAlignment->core.tid != pAlignment->core.mtid) 
         return STREAM_PASS;
 
     return STREAM_KEEP;

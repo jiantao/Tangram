@@ -125,6 +125,7 @@ bool LibTable::GetSampleID(uint32_t& sampleID, uint32_t readGrpID) const
 bool LibTable::GetSpecialRefID(uint32_t& specialRefID, const char* specialRefName) const
 {
     const khash_t(name)* pHash = (const khash_t(name)*) specialRefHash;
+    if (!pHash) return false;
     khiter_t khIter = kh_get(name, pHash, specialRefName);
 
     if (khIter != kh_end(pHash))
