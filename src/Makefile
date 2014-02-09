@@ -34,7 +34,7 @@ SUBDIRS := OutSources \
 		TangramMerge \
 		TangramDetect \
 		TangramIndex \
-		TangramFilter
+		TangramTools
 
 all:
 	@echo "Building Tangram"
