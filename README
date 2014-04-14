@@ -26,6 +26,12 @@ Obtaining and Compiling
 > cd src
 > make
 
+To successfully compile Tangram, it requires:
+
+1. g++ 4.2.0 and above
+2. zlib
+3. pthread lib
+
 
 Detection pipeline
 =========================
