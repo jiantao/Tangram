@@ -63,7 +63,7 @@ struct Filter {
     , report_cigar(cigar)
     , score_filter(score)
     , distance_filter(dis)
-  {};
+    {};
 };
 
 class Aligner {

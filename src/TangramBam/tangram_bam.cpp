@@ -22,21 +22,29 @@ extern "C" {
 
 using namespace std;
 
-const int kRequestedBases = 20;
+namespace {
 StripedSmithWaterman::Aligner aligner_;
+const StripedSmithWaterman::Filter kFilter(true, false, 0, 32467);
+const int kAlignmentMapSize = 10000;
+const float kSoftClipRate = 0.15; // the max ratio of allowed soft clips
+const int kRequestedBases = 20;
+int kRequiredMatch;
+}
 
 void ShowHelp() {
   fprintf(stderr, "\n");
   fprintf(stderr, "Usage: tangram_bam [options] -i <in_bam> -r <ref_fa> -o <out_bam>\n\n");
 
   fprintf(stderr, "\nMandatory arguments:\n");
-  fprintf(stderr, "                     -i --input FILE   the input of bam file\n");
-  fprintf(stderr, "                     -r --ref FILE     the input of special reference file\n");
-  fprintf(stderr, "                     -o --output FILE  the output of bam file\n");
+  fprintf(stderr, "                     -i --input FILE   The input of bam file [stdin].\n");
+  fprintf(stderr, "                     -r --ref FILE     The input of special reference file.\n");
+  fprintf(stderr, "                     -o --output FILE  The output of bam file [stdout].\n");
 
   fprintf(stderr, "\nOptions:\n");
-  fprintf(stderr, "                     -h --help                    print this help message\n");
-  fprintf(stderr, "                     -t --target-ref-name STRING  chromosome region\n");
+  fprintf(stderr, "                     -h --help                    Print this help message.\n");
+  fprintf(stderr, "                     -t --target-ref-name STRING  Chromosome region.\n");
+  fprintf(stderr, "                     -m --required-match INT      The number of required matches.\n");
+  fprintf(stderr, "                                                  between reads and special references [50].\n");
 
   fprintf(stderr, "\nNotes:\n");
   fprintf(stderr, "       1. tangram_bam will add ZA tags that are required for the following detection.\n");
@@ -341,6 +349,7 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
     {"output", required_argument, NULL, 'o'},
     {"ref", required_argument, NULL, 'r'},
     {"target-ref-name", required_argument, NULL, 't'},
+    {"required-match", required_argument, NULL, 'm'},
 
     {0, 0, 0, 0}
   };
@@ -360,14 +369,16 @@ bool ParseArguments(const int argc, char* const * argv, Param* param) {
       case 'o': param->out_bam = optarg; break;
       case 'r': param->ref_fasta = optarg; break;
       case 't': param->target_ref_name = optarg; break;
+      case 'm': param->required_match = atoi(optarg); break;
     }
   }
 
-  if (show_help || param->in_bam.empty() 
-   || param->out_bam.empty() || param->ref_fasta.empty()) {
+  if (show_help || param->ref_fasta.empty() || (param->required_match <= 0)) {
     ShowHelp();
     return false;
   }
+
+  kRequiredMatch = param->required_match;
 
   return true;
 }
@@ -484,7 +495,9 @@ int GetHashId(
 }
 
 int GetAlignment(
-    const BamTools::BamAlignment& bam_alignment,
+    //const BamTools::BamAlignment& bam_alignment,
+    const string& bases,
+    const int& length,
     const BestRegion& region,
     const SR_RefHeader* reference_header,
     const SR_Reference* reference_special) {
@@ -499,12 +512,12 @@ int GetAlignment(
   }
 
   int forward_shift = 0;
-  if (static_cast <int> (pos) < bam_alignment.Length) forward_shift = pos;
-  else forward_shift = bam_alignment.Length;
+  if (static_cast <int> (pos) < length) forward_shift = pos;
+  else forward_shift = length;
 
   int backward_shift = 0;
-  if ((pos + bam_alignment.Length + 1) > special_ref_view->seqLen) backward_shift = special_ref_view->seqLen - pos - 1;
-  else backward_shift = bam_alignment.Length;
+  if ((pos + length + 1) > special_ref_view->seqLen) backward_shift = special_ref_view->seqLen - pos - 1;
+  else backward_shift = length;
 
   int begin = region.refBegins[0] - forward_shift;
   int end   = region.refBegins[0] + backward_shift;
@@ -512,9 +525,12 @@ int GetAlignment(
   StripedSmithWaterman::Alignment alignment;
   const char* ref = reference_special->sequence + begin;
   const int ref_length = end - begin + 1;
-  aligner_.Align(bam_alignment.QueryBases.c_str(), ref, ref_length, kFilter, &alignment);
+  for(int i= begin; i< end; ++i) {
+  }
+  aligner_.Align(bases.c_str(), ref, ref_length, kFilter, &alignment);
 
-  int reauired_score = (bam_alignment.Length > 100) ? 140 : (bam_alignment.Length * 1.4);   
+  //int reauired_score = (bam_alignment.Length > 100) ? 140 : (bam_alignment.Length * 1.4);   
+  int reauired_score = kRequiredMatch * 2; // 2 is the match score
   if (alignment.sw_score < reauired_score) {
     SR_RefViewFree(special_ref_view);
     return -1;
@@ -575,13 +591,14 @@ void LoadAlignmentsNotInTargetChr(
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
           //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
-          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+          index = GetAlignment(bam_alignment.QueryBases, bam_alignment.QueryBases.size(), *(hashes_collection.Get(id)), reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         if (index == -1) { // try the reverse complement sequences
           string reverse;
           GetReverseComplement(bam_alignment.QueryBases, &reverse);
+	  //bam_alignment.QueryBases = reverse;
           #ifdef TB_VERBOSE_DEBUG
           fprintf(stderr, "%s\n", reverse.c_str());
           #endif
@@ -591,19 +608,21 @@ void LoadAlignmentsNotInTargetChr(
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
             //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
-            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+            index = GetAlignment(reverse, reverse.size(), *(hashes_collection2.Get(id)), reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
-      #ifdef TB_VERBOSE_DEBUG
-      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
-      #endif
+      
       al.Clear();
       al.bam_alignment = bam_alignment;
       al.hit_insertion = (index == -1) ? false: true;
       al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
       StoreInBuffer(&al, al_maps);
+
+      #ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "SP mapped: %c\tSP:%s\n", (index == -1) ? 'F' : 'T', al.ins_prefix.c_str());
+      #endif
       } // end of
     }
     HashRegionTableFree(hashes);
@@ -621,13 +640,14 @@ void LoadAlignmentsNotInTargetChr(
         if (get_hash) {
           const int id = hashes_collection.GetSize() - 1;
           //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
-          index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+          index = GetAlignment(bam_alignment.QueryBases, bam_alignment.QueryBases.size(), *(hashes_collection.Get(id)), reference_header, reference);
         }
         //Align(bam_alignment.QueryBases, aligner, &alignment);
         //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         if (index == -1) { // try the reverse complement sequences
           string reverse;
           GetReverseComplement(bam_alignment.QueryBases, &reverse);
+	  //bam_alignment.QueryBases = reverse;
           #ifdef TB_VERBOSE_DEBUG
           fprintf(stderr, "%s\n", reverse.c_str());
           #endif
@@ -637,19 +657,20 @@ void LoadAlignmentsNotInTargetChr(
           if (get_hash) {
             const int id = hashes_collection2.GetSize() - 1;
             //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
-            index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+            index = GetAlignment(reverse, reverse.size(), *(hashes_collection2.Get(id)), reference_header, reference);
           }
           //Align(reverse, aligner, &alignment);
           //index = PickBestAlignment(bam_alignment.Length, alignment, s_ref);
         } // end if (index == -1)
-      #ifdef TB_VERBOSE_DEBUG
-      fprintf(stderr, "SP mapped: %c\n", (index == -1) ? 'F' : 'T');
-      #endif
       al.Clear();
       al.bam_alignment = bam_alignment;
       al.hit_insertion = (index == -1) ? false: true;
       al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
       StoreInBuffer(&al, al_maps);
+
+      #ifdef TB_VERBOSE_DEBUG
+      fprintf(stderr, "SP mapped: %c\tSP:%s\n", (index == -1) ? 'F' : 'T', al.ins_prefix.c_str());
+      #endif
       } // end if
     }
     HashRegionTableFree(hashes);
@@ -777,11 +798,12 @@ int main(int argc, char** argv) {
       if (get_hash) {
         const int id = hashes_collection.GetSize() - 1;
         //index = GetHashId(*(hashes_collection.Get(id)), kRequestedBases, reference_header, reference);
-        index = GetAlignment(bam_alignment, *(hashes_collection.Get(id)), reference_header, reference);
+        index = GetAlignment(bam_alignment.QueryBases, bam_alignment.QueryBases.size(), *(hashes_collection.Get(id)), reference_header, reference);
       }
       if (index == -1) { // try the reverse complement sequences
         string reverse;
         GetReverseComplement(bam_alignment.QueryBases, &reverse);
+	//bam_alignment.QueryBases = reverse;
         #ifdef TB_VERBOSE_DEBUG
         fprintf(stderr, "%s\n", reverse.c_str());
         #endif
@@ -791,7 +813,7 @@ int main(int argc, char** argv) {
         if (get_hash2) {
           const int id = hashes_collection2.GetSize() - 1;
           //index = GetHashId(*(hashes_collection2.Get(id)), kRequestedBases, reference_header, reference);
-          index = GetAlignment(bam_alignment, *(hashes_collection2.Get(id)), reference_header, reference);
+          index = GetAlignment(reverse, reverse.size(), *(hashes_collection2.Get(id)), reference_header, reference);
         }
       }
     }

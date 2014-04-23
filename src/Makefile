@@ -21,8 +21,8 @@ export CXXFLAGS := -Wall -g -O2
 ##############################
 ##### VERBOSE_DEBUG mode #####
 ##############################
-#export CFLAGS := --std=gnu99 -Wall -g -O2 -D TD_VERBOSE_DEBUG
-#export CXXFLAGS := -Wall -g -O2 -D TD_VERBOSE_DEBUG
+#export CFLAGS := --std=gnu99 -Wall -g -O2 -D TB_VERBOSE_DEBUG
+#export CXXFLAGS := -Wall -g -O2 -D TB_VERBOSE_DEBUG
 ##############################
 
 #export PTHREAD := -pthread

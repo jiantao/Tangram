@@ -8,10 +8,6 @@
 
 using namespace std;
 
-const StripedSmithWaterman::Filter kFilter(true, false, 0, 32467);
-const int kAlignmentMapSize = 10000;
-const float kSoftClipRate = 0.15; // the max ratio of allowed soft clips
-
 struct Alignment {
   BamTools::BamAlignment bam_alignment;
   bool hit_insertion;
@@ -30,18 +26,20 @@ struct Alignment {
 };
 
 struct Param {
-  string in_bam;
-  string out_bam;
-  string ref_fasta;
+  string in_bam; // -i
+  string out_bam; // -o
+  string ref_fasta; // -r
   string command_line;
-  string target_ref_name; // the target chromosome
+  string target_ref_name; // -t, the target chromosome
+  int required_match; // -m
 
   Param()
-      : in_bam()
-      , out_bam()
+      : in_bam("stdin")
+      , out_bam("stdout")
       , ref_fasta()
       , command_line()
       , target_ref_name("-1")
+      , required_match(50)
   {}
 };
 
