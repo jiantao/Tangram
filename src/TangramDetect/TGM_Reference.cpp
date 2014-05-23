@@ -261,7 +261,8 @@ void Reference::Read(FILE* fpRefInput, const int32_t& refID, const int32_t& star
     if (spRefHeader.names.Size() > 0)
         ReadSpecialRef(fpRefInput);
 
-    ReadRef(fpRefInput, refID, start, end);
+    if (refID != -1)
+      ReadRef(fpRefInput, refID, start, end);
 }
 
 void Reference::ReadRefHeader(FILE* fpRefInput)
