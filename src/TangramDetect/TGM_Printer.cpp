@@ -327,7 +327,8 @@ void Printer::PrintSpecialHeader(void)
 	       "##FORMAT=<ID=R5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
 	       "##FORMAT=<ID=R3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
 	       "##FORMAT=<ID=S5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
-	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n",
+	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n"
+	       "##FORMAT=<ID=SF,Number=1,Type=Integer,Description=\"supportive MEI fragments whose fragmenet length is shorter\">\n",
                buf);
 
         printf("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
@@ -358,7 +359,8 @@ void Printer::PrintSpecialHeader(void)
 	       "##FORMAT=<ID=R5,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 5-prime\">\n"
 	       "##FORMAT=<ID=R3,Number=1,Type=Integer,Description=\"supportive read-pair fragments from 3-prime\">\n"
 	       "##FORMAT=<ID=S5,Number=1,Type=Integer,Description=\"supportive split-read fragments from 5-prime\">\n"
-	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n",
+	       "##FORMAT=<ID=S3,Number=1,Type=Integer,Description=\"supportive split-read fragments from 3-prime\">\n"
+	       "##FORMAT=<ID=SF,Number=1,Type=Integer,Description=\"supportive MEI fragments whose fragmenet length is shorter\">\n",
                buf);
 
         fprintf(outputGrp.fpSpecial, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
@@ -626,11 +628,13 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 1] << ",";
             formatted << setiosflags(ios::fixed) << setprecision(2) << genotype.likelihoods[idx + 2];
 
+            const int ao = genotype.sampleCount[i].rp3 + genotype.sampleCount[i].rp5 + genotype.sampleCount[i].sr3 + genotype.sampleCount[i].sr5;
             formatted << ":" << genotype.sampleCount[i].nonSupport
                       << ":" << genotype.sampleCount[i].rp3 
 		      << ":" << genotype.sampleCount[i].rp5
                       << ":" << genotype.sampleCount[i].sr3 
-		      << ":" << genotype.sampleCount[i].sr5;
+		      << ":" << genotype.sampleCount[i].sr5
+		      << ":" << genotype.sampleCount[i].support - ao;
         }
     }
     else
@@ -644,22 +648,24 @@ void Printer::PrintGenotype(const Genotype& genotype, bool hasGenotype)
 
 	    formatted << "0.00,0.00,0.00";
 
+            const int ao = genotype.sampleCount[i].rp3 + genotype.sampleCount[i].rp5 + genotype.sampleCount[i].sr3 + genotype.sampleCount[i].sr5;
             formatted << ":" << genotype.sampleCount[i].nonSupport
                       << ":" << genotype.sampleCount[i].rp3 
 		      << ":" << genotype.sampleCount[i].rp5
                       << ":" << genotype.sampleCount[i].sr3 
-		      << ":" << genotype.sampleCount[i].sr5;
+		      << ":" << genotype.sampleCount[i].sr5
+		      << ":" << genotype.sampleCount[i].support - ao;
         }
     }
 
     if (outputGrp.fpSpecial == NULL)
     {
-        printf("\tGT:GL:RO:R5:R3:S5:S3");
+        printf("\tGT:GL:RO:R5:R3:S5:S3:SF");
         printf("%s\n", formatted.str().c_str());
     }
     else
     {
-        fprintf(outputGrp.fpSpecial, "\tGT:GL:RO:R5:R3:S5:S3");
+        fprintf(outputGrp.fpSpecial, "\tGT:GL:RO:R5:R3:S5:S3:SF");
         fprintf(outputGrp.fpSpecial, "%s\n", formatted.str().c_str());
     }
 }
@@ -675,19 +681,23 @@ void Printer::PrintSampleInfo(const Genotype& genotype)
         if (genotype.sampleCount[i].support > 0) {
             formatted << "\t./1";
 	    
+	    const int ao = genotype.sampleCount[i].rp3 + genotype.sampleCount[i].rp5 + genotype.sampleCount[i].sr3 + genotype.sampleCount[i].sr5;
             formatted << ":" << genotype.sampleCount[i].nonSupport
                       << ":" << genotype.sampleCount[i].rp3 
 		      << ":" << genotype.sampleCount[i].rp5
                       << ":" << genotype.sampleCount[i].sr3 
-		      << ":" << genotype.sampleCount[i].sr5;
+		      << ":" << genotype.sampleCount[i].sr5
+		      << ":" << genotype.sampleCount[i].support - ao;
         } else {
             formatted << "\t0/0";
 
+            const int ao = genotype.sampleCount[i].rp3 + genotype.sampleCount[i].rp5 + genotype.sampleCount[i].sr3 + genotype.sampleCount[i].sr5;
             formatted << ":" << genotype.sampleCount[i].nonSupport
                       << ":" << genotype.sampleCount[i].rp3 
 		      << ":" << genotype.sampleCount[i].rp5
                       << ":" << genotype.sampleCount[i].sr3 
-		      << ":" << genotype.sampleCount[i].sr5;
+		      << ":" << genotype.sampleCount[i].sr5
+		      << ":" << genotype.sampleCount[i].support - ao;
 	}
     }
 
