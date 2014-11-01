@@ -132,7 +132,7 @@ while (my $line = <IN>)
         my $ret = 0;
         if (($ret = SpecialFragFilter($data[7])) > 0)
         {
-            my $family = SetSpeicalFamily($data[4]);
+            my $family = SetSpeicalFamily($data[7]);
             if ($family eq "PO")
             {
                 next;
@@ -194,7 +194,7 @@ CleanUp();
 sub SpecialFragFilter
 {
     my $infoStr = shift(@_);
-    my ($rpFrag5, $rpFrag3, $srFrag5, $srFrag3) = $infoStr =~ /FRAG=(\d+),(\d+),(\d+),(\d+)/;
+    my ($rpFrag5, $rpFrag3, $srFrag5, $srFrag3) = $infoStr =~ /RP5=(\d+);RP3=(\d+);SR5=(\d+);SR3=(\d+)/;
 
     my $ret = 0;
 
@@ -222,7 +222,11 @@ sub SpecialFragFilter
 sub SetSpeicalFamily
 {
     my $alt = shift(@_);
-    my $family = uc($1) if $alt =~ /INS:ME:(\S+)?>/;
+    my $family = 1;
+    if ($alt =~ /TYPE=(\w+);/)
+    {
+        $family = $1
+    }
 
     if ($family ne "PO")
     {
