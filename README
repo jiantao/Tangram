@@ -89,6 +89,31 @@ tangram_bam
 
 For the detailed usage of each program, please run "$PROGRAM -help"
 
+ZA Tag Information
+=========================
+ZA tag (an optional tag in Bam file) is required for MEI detection with Tangram. 
+The basic structure of this tag looks like this:
+
+<@/&:MQ1:MQ2:SP_REF:NUM_MAP:CIGAR:MD>
+
+There are 7 fields in this tag:
+
+1. @ or &: @ means this is the information for the current read and & means this
+           is the information for its mate (pair-end sequencing)
+
+2. MQ1: The best mapping quality
+
+3. MQ2: The second best mapping quality
+
+4. SP_REF: If the read can be aligned to a special reference provided by user,
+           this field will record the first two characters of the special reference name 
+           in this field, e.g. AL(ALU). Otherwise, this field will be empty.
+
+5. NUM_MAP: Number of mapping places of this read that can be found in the genome.
+
+6. CIGAR: CIGAR string of this mapping
+
+7. MD: MD string of this mapping
 
 Bug Report
 =========================
