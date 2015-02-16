@@ -825,7 +825,7 @@ int main(int argc, char** argv) {
     al.Clear();
     al.bam_alignment = bam_alignment;
     al.hit_insertion = (index == -1) ? false: true;
-    al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(8,2);
+    al.ins_prefix    = (index == -1) ? "" : s_ref.ref_names[index].substr(0,2);
     if (bam_alignment.RefID == target_ref_id) {
       if (!bam_alignment.IsPaired()) {
         WriteAlignment(&al, &writer);
